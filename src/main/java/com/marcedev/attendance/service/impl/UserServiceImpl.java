@@ -10,6 +10,8 @@ import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -214,5 +216,16 @@ public class UserServiceImpl implements UserService {
                 saved.getOrganization() != null ? saved.getOrganization().getId() : null
         );
     }
+    @Override
+    public Page<User> filterUsers(
+            String search,
+            String role,
+            Long orgId,
+            Long courseId,
+            Pageable pageable
+    ) {
+        return userRepository.filterUsers(search, role, orgId, courseId, pageable);
+    }
+
 
 }

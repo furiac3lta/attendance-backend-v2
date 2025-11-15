@@ -2,6 +2,9 @@ package com.marcedev.attendance.service;
 
 import com.marcedev.attendance.dto.UserDTO;
 import com.marcedev.attendance.entities.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -20,5 +23,11 @@ public interface UserService {
     void updateUser(Long id, User updatedUser);      // Actualizar datos del usuario
     User createAdminForOrganization(Long organizationId, User newAdminData);
     UserDTO updateUser(Long id, UserDTO dto);
-
+    Page<User> filterUsers(
+            String search,
+            String role,
+            Long orgId,
+            Long courseId,
+            Pageable pageable
+    ) ;
 }

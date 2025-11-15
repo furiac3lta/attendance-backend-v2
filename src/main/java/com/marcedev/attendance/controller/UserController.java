@@ -32,23 +32,36 @@ public class UserController {
     // ==========================================================
     @GetMapping
     public ResponseEntity<Page<UserDTO>> getAll(
-            @PageableDefault(size = 10) Pageable pageable
+            @PageableDefault(size = 10) Pageable pageable,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Long orgId,
+            @RequestParam(required = false) Long courseId
     ) {
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
         User currentUser = userService.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
 
         Page<User> page;
+
+        // 🔥 SUPER ADMIN — puede filtrar todo
         if (currentUser.getRole() == Rol.SUPER_ADMIN) {
-            page = userRepository.findAll(pageable);
-        } else if (currentUser.getRole() == Rol.ADMIN) {
-            if (currentUser.getOrganization() == null) {
-                return ResponseEntity.badRequest().body(Page.empty());
-            }
-            Long orgId = currentUser.getOrganization().getId();
-            page = userRepository.findByOrganizationId(orgId, pageable);
-        } else {
+            page = userService.filterUsers(search, role, orgId, courseId, pageable);
+        }
+
+        // 🔥 ADMIN — solo su organización
+        else if (currentUser.getRole() == Rol.ADMIN) {
+            Long myOrgId = currentUser.getOrganization() != null
+                    ? currentUser.getOrganization().getId()
+                    : null;
+
+            page = userService.filterUsers(search, role, myOrgId, courseId, pageable);
+        }
+
+        // 🔥 OTROS — no pueden ver usuarios
+        else {
             return ResponseEntity.status(403).body(Page.empty());
         }
 

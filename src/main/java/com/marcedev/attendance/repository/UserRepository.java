@@ -36,4 +36,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findDistinctByCoursesIdIn(@Param("courseIds") List<Long> courseIds);
 
     List<User> findByRoleAndOrganizationId(Rol role, Long organizationId);
+
+    @Query("""
+    SELECT DISTINCT u FROM User u
+    LEFT JOIN u.organization o
+    LEFT JOIN u.courses c
+    WHERE (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+           OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))
+      AND (:role IS NULL OR u.role = com.marcedev.attendance.enums.Rol.valueOf(:role))
+      AND (:orgId IS NULL OR o.id = :orgId)
+      AND (:courseId IS NULL OR c.id = :courseId)
+""")
+    Page<User> filterUsers(
+            @Param("search") String search,
+            @Param("role") String role,
+            @Param("orgId") Long orgId,
+            @Param("courseId") Long courseId,
+            Pageable pageable
+    );
+
 }
