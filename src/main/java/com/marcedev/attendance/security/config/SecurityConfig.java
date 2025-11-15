@@ -32,44 +32,20 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Necesario para enviar cookies / Authorization header
         config.setAllowCredentials(true);
 
-        // Orígenes permitidos
-        config.setAllowedOrigins(List.of(
+        // 🔥 EL FIX IMPORTANTE
+        config.setAllowedOriginPatterns(List.of(
                 "http://localhost:4200",
                 "https://attendance-frontend-v2-production.up.railway.app"
         ));
 
-        // Métodos permitidos
-        config.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "DELETE",
-                "PATCH",
-                "OPTIONS"
-        ));
-
-        // Headers permitidos
-        config.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "X-Requested-With",
-                "Accept",
-                "*"
-        ));
-
-
-        // Headers expuestos al frontend
-        config.setExposedHeaders(List.of(
-                "Authorization",
-                "Content-Type"
-        ));
+        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 
