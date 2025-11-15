@@ -32,17 +32,37 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
+        // Necesario para enviar cookies / Authorization header
         config.setAllowCredentials(true);
+
+        // Orígenes permitidos
         config.setAllowedOrigins(List.of(
-                "https://gleaming-dodol-e386b2.netlify.app",
-                "http://localhost:4200"
+                "http://localhost:4200",
+                "https://attendance-frontend-v2-production.up.railway.app"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // Métodos permitidos
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
+        // Headers permitidos
         config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization"));
+
+        // Headers expuestos al frontend
+        config.setExposedHeaders(List.of(
+                "Authorization",
+                "Content-Type"
+        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 
