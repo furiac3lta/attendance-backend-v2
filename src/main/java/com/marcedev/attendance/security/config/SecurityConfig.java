@@ -20,7 +20,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -29,72 +28,53 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomAuthenticationEntryPoint customEntryPoint;
 
-    // ======================================================
-    // 🔥 C O R S — Netlify + Localhost + Railway
-    // ======================================================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-
         config.setAllowedOrigins(List.of(
-                "https://gleaming-dodol-e386b2.netlify.app",  // Frontend Netlify
-                "http://localhost:4200"                       // Angular local
+                "https://gleaming-dodol-e386b2.netlify.app",
+                "http://localhost:4200"
         ));
-
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 
-    // ======================================================
-    // 🔥 S E C U R I T Y   F I L T E R   C H A I N
-    // ======================================================
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(customEntryPoint))
-
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos (login, register, refresh)
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()        // login, register
 
-                        // Preflight OPTIONS debe estar siempre permitido
+                        .requestMatchers("/actuator/**").permitAll()       // ❤️ PARA RAILWAY
+
+                        .requestMatchers(HttpMethod.GET, "/").permitAll()  // ❤️ PARA RAILWAY
+
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Todos los demás requieren autenticación
                         .anyRequest().authenticated()
                 )
-
-                // Filtro JWT antes del UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // ======================================================
-    // 🔐 PASSWORD ENCODER
-    // ======================================================
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // ======================================================
-    // 🧠 AUTH MANAGER
-    // ======================================================
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
             throws Exception {
