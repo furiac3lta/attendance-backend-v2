@@ -52,7 +52,14 @@ public class SecurityConfig {
         ));
 
         // Headers permitidos
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                "Accept",
+                "*"
+        ));
+
 
         // Headers expuestos al frontend
         config.setExposedHeaders(List.of(
