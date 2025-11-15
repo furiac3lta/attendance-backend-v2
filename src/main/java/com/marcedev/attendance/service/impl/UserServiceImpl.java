@@ -217,15 +217,16 @@ public class UserServiceImpl implements UserService {
         );
     }
     @Override
-    public Page<User> filterUsers(
-            String search,
-            String role,
-            Long orgId,
-            Long courseId,
-            Pageable pageable
-    ) {
-        return userRepository.filterUsers(search, role, orgId, courseId, pageable);
+    public Page<User> filterUsers(String search, String role, Long orgId, Long courseId, Pageable pageable) {
+        Rol roleEnum = null;
+
+        if (role != null && !role.isBlank() && !role.equals("ALL")) {
+            roleEnum = Rol.valueOf(role);
+        }
+
+        return userRepository.filterUsers(search, roleEnum, orgId, courseId, pageable);
     }
+
 
 
 }
