@@ -122,5 +122,46 @@ public class OrganizationController {
         // ✅ Enviar JSON en vez de texto plano (Angular lo interpreta bien)
         return ResponseEntity.ok(Map.of("message", "✅ Administrador asignado correctamente."));
     }
+    // 🔹 Editar organización (SUPER_ADMIN o el ADMIN de esa organización)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateOrganization(
+            @PathVariable Long id,
+            @RequestBody OrganizationDTO dto) {
+
+        User currentUser = getAuthenticatedUser();
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
+
+        // SUPER_ADMIN puede editar cualquier organización
+        if (currentUser.getRole() != Rol.SUPER_ADMIN) {
+
+            // ADMIN solo puede editar su propia organización
+            if (currentUser.getRole() == Rol.ADMIN) {
+                if (currentUser.getOrganization() == null ||
+                        !currentUser.getOrganization().getId().equals(id)) {
+
+                    return ResponseEntity.status(403)
+                            .body("🚫 No tiene permisos para editar esta organización");
+                }
+            } else {
+                // INSTRUCTOR o USER
+                return ResponseEntity.status(403)
+                        .body("🚫 No tiene permisos para editar organizaciones");
+            }
+        }
+
+        // 🔹 Aplicar cambios
+        org.setName(dto.getName());
+        org.setType(dto.getType());
+        org.setPhone(dto.getPhone());
+        org.setAddress(dto.getAddress());
+        org.setLogoUrl(dto.getLogoUrl());
+
+        organizationRepository.save(org);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "🏢 Organización actualizada correctamente"
+        ));
+    }
 
 }
