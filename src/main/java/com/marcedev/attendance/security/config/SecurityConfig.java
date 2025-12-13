@@ -20,6 +20,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -28,18 +30,16 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomAuthenticationEntryPoint customEntryPoint;
 
+    // ===================== CORS =====================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-
-        // 🔥 EL FIX IMPORTANTE
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:4200",
                 "https://attendance-frontend-v2-production.up.railway.app"
         ));
-
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
@@ -49,23 +49,50 @@ public class SecurityConfig {
         return source;
     }
 
+    // ===================== SECURITY =====================
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(customEntryPoint))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(ex ->
+                        ex.authenticationEntryPoint(customEntryPoint)
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()        // login, register
 
-                        .requestMatchers("/actuator/**").permitAll()       // ❤️ PARA RAILWAY
-
-                        .requestMatchers(HttpMethod.GET, "/").permitAll()  // ❤️ PARA RAILWAY
-
+                        // ---------- PÚBLICOS ----------
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // ---------- ASISTENCIA ----------
+                        .requestMatchers(HttpMethod.GET, "/api/attendance/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
+                        .requestMatchers(HttpMethod.POST, "/api/attendance/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/attendance/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/attendance/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN")
+
+                        // ---------- CLASES ----------
+                        .requestMatchers("/api/classes/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
+
+                        // ---------- CURSOS ----------
+                        .requestMatchers("/api/courses/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
+
+                        // ---------- USUARIOS ----------
+                        .requestMatchers("/api/users/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN")
+
+                        // ---------- TODO LO DEMÁS ----------
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -73,14 +100,16 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // ===================== BEANS =====================
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 }

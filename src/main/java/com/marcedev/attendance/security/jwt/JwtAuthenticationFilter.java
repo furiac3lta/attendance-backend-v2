@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -14,8 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -23,81 +20,78 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            UserDetailsService userDetailsService
+    ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
     }
 
     /**
-     * ✅ Solo excluye rutas públicas (login y register).
-     * Todo lo demás pasa por el filtro JWT.
+     * 🔓 Solo excluye endpoints públicos
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.equals("/api/auth/login") || path.equals("/api/auth/register");
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/");
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
 
+        // 🚫 Sin header → sigue sin autenticar
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String jwt = authHeader.substring(7).trim();
+        final String jwt = authHeader.substring(7);
         final String userEmail;
 
         try {
             userEmail = jwtService.extractUsername(jwt);
         } catch (Exception e) {
-            System.err.println("⚠️ Error al extraer usuario del token: " + e.getMessage());
+            System.err.println("❌ JWT inválido: " + e.getMessage());
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Solo si no hay autenticación previa
+        // ✅ Solo si no hay auth previa
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+            UserDetails userDetails =
+                    userDetailsService.loadUserByUsername(userEmail);
 
-                    // Obtener roles desde el token o desde el UserDetails
-                    List<String> roles = jwtService.extractClaim(jwt, claims -> claims.get("roles", List.class));
-                    if (roles == null || roles.isEmpty()) {
-                        roles = userDetails.getAuthorities().stream()
-                                .map(Object::toString)
-                                .collect(Collectors.toList());
-                    }
+            if (jwtService.isTokenValid(jwt, userDetails)) {
 
-                    List<SimpleGrantedAuthority> authorities = roles.stream()
-                            .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
-                            .map(SimpleGrantedAuthority::new)
-                            .collect(Collectors.toList());
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities() // 👈 SOLO DESDE UserDetails
+                        );
 
-                    System.out.println("✅ JWT válido → Usuario: " + userEmail + " | Roles: " + authorities);
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
 
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-
-                } else {
-                    System.err.println("🚫 Token inválido o expirado para: " + userEmail);
-                }
-
-            } catch (Exception e) {
-                System.err.println("❌ Error al autenticar JWT: " + e.getMessage());
+                System.out.println(
+                        "✅ AUTH OK → " + userEmail + " | " + userDetails.getAuthorities()
+                );
             }
         }
+        System.out.println("🔐 SecurityContext: " +
+                SecurityContextHolder.getContext().getAuthentication());
 
         filterChain.doFilter(request, response);
     }

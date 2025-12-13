@@ -2,6 +2,8 @@ package com.marcedev.attendance.dto;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -10,25 +12,27 @@ public class AttendanceDTO {
 
     private Long id;
 
-    // 🔹 Información de la clase
-    private Long classId;
+    // Clase
+    private Long classSessionId;
     private String className;
 
-    // 🔹 Información del alumno
+    // Alumno
     private Long studentId;
     private String studentName;
 
-    // 🔹 Estado de asistencia
-    private boolean attended;
-
-    // 🔹 Información del curso (mantiene compatibilidad)
+    // Curso
     private Long courseId;
     private String courseName;
 
-    // 🔹 NUEVO: Información de la organización (gimnasio/colegio)
+    // Organización
     private Long organizationId;
     private String organizationName;
 
-    private Long classSessionId; // <--- ESTE ES EL QUE FALTABA
+    // Estado
+    private boolean attended;
 
+    // ✅ Auditoría
+    private String takenByName;
+    private String takenByRole;
+    private LocalDateTime takenAt;
 }

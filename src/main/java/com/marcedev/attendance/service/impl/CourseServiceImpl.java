@@ -170,11 +170,27 @@ public class CourseServiceImpl implements CourseService {
     }
 
     public void assignInstructor(Long courseId, Long instructorId) {
+
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         User instructor = userRepository.findById(instructorId)
                 .orElseThrow(() -> new RuntimeException("Instructor no encontrado"));
+
+        // 🔐 VALIDACIÓN CLAVE
+        if (instructor.getRole() != Rol.INSTRUCTOR) {
+            throw new IllegalStateException(
+                    "Solo usuarios con rol INSTRUCTOR pueden ser asignados a un curso"
+            );
+        }
+
+        // (opcional pero sano) validar misma organización
+        if (course.getOrganization() != null &&
+                instructor.getOrganization() != null &&
+                !course.getOrganization().getId().equals(instructor.getOrganization().getId())) {
+
+            throw new IllegalStateException("El instructor pertenece a otra organización");
+        }
 
         course.setInstructor(instructor);
         courseRepository.save(course);
