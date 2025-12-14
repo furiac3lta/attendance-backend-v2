@@ -35,4 +35,6 @@ public class AttendanceDTO {
     private String takenByName;
     private String takenByRole;
     private LocalDateTime takenAt;
+
+
 }

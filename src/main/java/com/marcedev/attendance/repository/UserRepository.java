@@ -57,4 +57,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("courseId") Long courseId,
             Pageable pageable
     );
+    @Query("""
+    SELECT u
+    FROM User u
+    JOIN u.courses c
+    WHERE c.id = :courseId
+      AND u.role = com.marcedev.attendance.enums.Rol.USER
+""")
+    List<User> findStudentsByCourseId(@Param("courseId") Long courseId);
+
+
 }
