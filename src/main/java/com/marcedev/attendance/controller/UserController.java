@@ -1,6 +1,7 @@
 // src/main/java/com/marcedev/attendance/controller/UserController.java
 package com.marcedev.attendance.controller;
 
+import com.marcedev.attendance.dto.InstructorDTO;
 import com.marcedev.attendance.dto.UserDTO;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
@@ -162,4 +163,19 @@ public class UserController {
         String email = getAuthenticatedEmail();
         return userService.findByEmail(email).orElseThrow().getRole();
     }
+
+    @GetMapping("/instructors")
+    public List<InstructorDTO> getInstructors() {
+        return userRepository.findByRole(Rol.INSTRUCTOR)
+                .stream()
+                .map(u -> new InstructorDTO(
+                        u.getId(),
+                        u.getFullName(),
+                        u.getEmail(),
+                        u.getOrganization().getId(),
+                        u.getOrganization().getName()
+                ))
+                .toList();
+    }
+
 }

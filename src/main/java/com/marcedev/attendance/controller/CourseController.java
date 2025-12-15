@@ -1,5 +1,6 @@
 package com.marcedev.attendance.controller;
 
+import com.marcedev.attendance.dto.InstructorDTO;
 import com.marcedev.attendance.entities.Course;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
@@ -200,8 +201,36 @@ public class CourseController {
             @PathVariable Long courseId,
             @PathVariable Long instructorId
     ) {
-        courseService.assignInstructor(courseId, instructorId);
-        return ResponseEntity.ok(Map.of("message", "Instructor asignado"));
+        try {
+            courseService.assignInstructor(courseId, instructorId);
+            return ResponseEntity.ok(Map.of("message", "Instructor asignado"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", e.getMessage())
+            );
+        }
     }
+
+    @GetMapping("/{courseId}/available-instructors")
+    public List<InstructorDTO> getAvailableInstructors(@PathVariable Long courseId) {
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+
+        Long orgId = course.getOrganization().getId();
+
+        return userRepository
+                .findByRoleAndOrganizationId(Rol.INSTRUCTOR, orgId)
+                .stream()
+                .map(i -> new InstructorDTO(
+                        i.getId(),
+                        i.getFullName(),
+                        i.getEmail(),
+                        orgId,
+                        course.getOrganization().getName()
+                ))
+                .toList();
+    }
+
 
 }

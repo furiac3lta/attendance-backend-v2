@@ -9,6 +9,7 @@ import com.marcedev.attendance.repository.CourseRepository;
 import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.UserService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -92,16 +93,20 @@ public class UserServiceImpl implements UserService {
 
     // 🔹 Asignar cursos a un usuario existente
     @Override
+    @Transactional
     public User assignCourses(Long userId, List<Long> courseIds) {
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         user.getCourses().clear();
-        user.getCourses().addAll(courseRepository.findAllById(courseIds));
 
-        userRepository.save(user);
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Error al recargar usuario actualizado"));
+        if (courseIds != null && !courseIds.isEmpty()) {
+            List<Course> courses = courseRepository.findAllById(courseIds);
+            user.getCourses().addAll(courses);
+        }
+
+        return userRepository.save(user);
     }
 
     // 🔹 Actualizar datos de usuario
