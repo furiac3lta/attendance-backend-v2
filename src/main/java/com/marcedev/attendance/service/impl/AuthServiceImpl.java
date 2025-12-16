@@ -106,7 +106,16 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // ✅ Generar token de forma correcta
+        // ======================================================
+        // 🔒 BLOQUEO DE USUARIOS COMUNES
+        // ======================================================
+        if (user.getRole() == Rol.USER) {
+            throw new RuntimeException("Este usuario no tiene permisos para acceder al sistema");
+        }
+
+        // ======================================================
+        // ✅ TOKEN
+        // ======================================================
         String token = jwtService.generateToken(
                 org.springframework.security.core.userdetails.User.builder()
                         .username(user.getEmail())
@@ -121,7 +130,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
-                user.getCourses() != null ? user.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
+                user.getCourses() != null
+                        ? user.getCourses().stream().map(c -> c.getName()).toList()
+                        : List.of(),
                 user.getOrganization() != null ? user.getOrganization().getId() : null
         );
 
@@ -131,4 +142,5 @@ public class AuthServiceImpl implements AuthService {
                 .user(dto)
                 .build();
     }
+
 }

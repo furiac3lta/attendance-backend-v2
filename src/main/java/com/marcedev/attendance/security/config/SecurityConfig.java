@@ -88,9 +88,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/courses/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
 
+                        // ---------- DASHBOARD ----------
+                        .requestMatchers(HttpMethod.GET, "/api/dashboard/**")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN")
+
                         // ---------- USUARIOS ----------
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN")
+
 
                         // ---------- TODO LO DEMÁS ----------
                         .anyRequest().authenticated()
