@@ -66,4 +66,7 @@ public class Attendance {
         }
     }
 
+    @Column(nullable = false)
+    private boolean hasDebt = false;
+
 }

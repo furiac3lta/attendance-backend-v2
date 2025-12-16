@@ -6,6 +6,7 @@ import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.mapper.AttendanceMapper;
 import com.marcedev.attendance.repository.*;
 import com.marcedev.attendance.service.AttendanceService;
+import com.marcedev.attendance.service.PaymentService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -16,7 +17,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +28,9 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final UserRepository userRepository;
     private final AttendanceMapper attendanceMapper;
     private final CourseRepository courseRepository;
+
+    // 🆕 SERVICIO DE PAGOS
+    private final PaymentService paymentService;
 
     // =========================================================
     // 🔐 AUTH
@@ -70,14 +73,29 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         Attendance entity;
 
+        // ===================== UPDATE =====================
         if (existingOpt.isPresent()) {
-            // 🔁 UPDATE
+
             entity = existingOpt.get();
+
+            ClassSession session = entity.getClassSession();
+            User student = entity.getStudent();
+
+            boolean upToDate =
+                    paymentService.isStudentUpToDate(
+                            student.getId(),
+                            session.getCourse().getId()
+                    );
+
             entity.setAttended(dto.isAttended());
+            entity.setHasDebt(!upToDate); // ✅ REGLA DEFINITIVA
             entity.setTakenBy(currentUser);
             entity.setTakenAt(LocalDateTime.now());
-        } else {
-            // ➕ CREATE
+        }
+
+        // ===================== CREATE =====================
+        else {
+
             entity = attendanceMapper.toEntity(dto);
 
             ClassSession session = classSessionRepository.findById(dto.getClassSessionId())
@@ -86,10 +104,17 @@ public class AttendanceServiceImpl implements AttendanceService {
             User student = userRepository.findById(dto.getStudentId())
                     .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
+            boolean upToDate =
+                    paymentService.isStudentUpToDate(
+                            student.getId(),
+                            session.getCourse().getId()
+                    );
+
             entity.setClassSession(session);
             entity.setStudent(student);
             entity.setCourse(session.getCourse());
             entity.setOrganization(session.getOrganization());
+            entity.setHasDebt(!upToDate); // ✅ CLAVE
             entity.setTakenBy(currentUser);
             entity.setTakenAt(LocalDateTime.now());
         }
@@ -105,7 +130,9 @@ public class AttendanceServiceImpl implements AttendanceService {
         List<Attendance> attendances = switch (currentUser.getRole()) {
             case SUPER_ADMIN -> attendanceRepository.findAll();
             case ADMIN, INSTRUCTOR ->
-                    attendanceRepository.findByOrganizationId(currentUser.getOrganization().getId());
+                    attendanceRepository.findByOrganizationId(
+                            currentUser.getOrganization().getId()
+                    );
             default -> throw new RuntimeException("No tiene permisos");
         };
 
@@ -117,13 +144,17 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public List<AttendanceDTO> findByClassId(Long classId) {
         return attendanceRepository.findByClassSessionId(classId)
-                .stream().map(attendanceMapper::toDTO).collect(Collectors.toList());
+                .stream()
+                .map(attendanceMapper::toDTO)
+                .toList();
     }
 
     @Override
     public List<AttendanceDTO> findByCourseId(Long courseId) {
         return attendanceRepository.findByCourseId(courseId)
-                .stream().map(attendanceMapper::toDTO).collect(Collectors.toList());
+                .stream()
+                .map(attendanceMapper::toDTO)
+                .toList();
     }
 
     @Override
@@ -136,61 +167,12 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public void deleteById(Long id) {
         User currentUser = getAuthenticatedUser();
+
         if (currentUser.getRole() == Rol.USER) {
             throw new RuntimeException("No autorizado");
         }
+
         attendanceRepository.deleteById(id);
-    }
-
-    // =========================================================
-    // 📌 API VIEJA (por curso)
-    // =========================================================
-
-    @Override
-    @Transactional
-    public void registerAttendanceByCourse(Long courseId, Map<Long, Boolean> attendanceMap) {
-
-        User currentUser = getAuthenticatedUser();
-
-        if (currentUser.getRole() == Rol.USER) {
-            throw new RuntimeException("No autorizado para tomar asistencia");
-        }
-
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
-
-        LocalDate today = LocalDate.now();
-
-        ClassSession session = classSessionRepository.findByCourseIdAndDate(courseId, today)
-                .orElseGet(() -> {
-                    ClassSession newSession = new ClassSession();
-                    newSession.setCourse(course);
-                    newSession.setDate(today);
-                    newSession.setName("Clase " + course.getName() + " - " + today);
-                    newSession.setInstructor(
-                            course.getInstructor() != null ? course.getInstructor() : currentUser
-                    );
-                    newSession.setOrganization(course.getOrganization());
-                    return classSessionRepository.save(newSession);
-                });
-
-        Organization org = session.getOrganization();
-
-        attendanceMap.forEach((studentId, present) -> {
-            User student = userRepository.findById(studentId)
-                    .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-
-            Attendance att = new Attendance();
-            att.setClassSession(session);
-            att.setStudent(student);
-            att.setAttended(present);
-            att.setCourse(course);
-            att.setOrganization(org);
-            att.setTakenBy(currentUser);
-            att.setTakenAt(LocalDateTime.now());
-
-            attendanceRepository.save(att);
-        });
     }
 
     // =========================================================
@@ -213,33 +195,22 @@ public class AttendanceServiceImpl implements AttendanceService {
         Course course = session.getCourse();
         Organization org = session.getOrganization();
 
-        List<Attendance> existing = attendanceRepository.findByClassSessionId(sessionId);
-
-        if (!existing.isEmpty()) {
-            // 🔁 UPDATE
-            for (AttendanceMarkDTO mark : marks) {
-                existing.stream()
-                        .filter(a -> a.getStudent().getId().equals(mark.getUserId()))
-                        .findFirst()
-                        .ifPresent(a -> {
-                            a.setAttended(mark.isPresent());
-                            a.setTakenBy(currentUser);
-                            a.setTakenAt(LocalDateTime.now());
-                        });
-            }
-            attendanceRepository.saveAll(existing);
-            return;
-        }
-
-        // ➕ CREATE
         for (AttendanceMarkDTO mark : marks) {
+
             User student = userRepository.findById(mark.getUserId())
                     .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+
+            boolean upToDate =
+                    paymentService.isStudentUpToDate(
+                            student.getId(),
+                            course.getId()
+                    );
 
             Attendance a = new Attendance();
             a.setClassSession(session);
             a.setStudent(student);
             a.setAttended(mark.isPresent());
+            a.setHasDebt(!upToDate); // ✅ CLAVE
             a.setCourse(course);
             a.setOrganization(org);
             a.setTakenBy(currentUser);
@@ -254,7 +225,11 @@ public class AttendanceServiceImpl implements AttendanceService {
     // =========================================================
 
     @Override
-    public List<CourseMonthlyAttendanceDTO> getCourseMonthlyStats(Long courseId, int month, int year) {
+    public List<CourseMonthlyAttendanceDTO> getCourseMonthlyStats(
+            Long courseId,
+            int month,
+            int year
+    ) {
         return attendanceRepository.getMonthlyCourseStats(courseId, month, year);
     }
 
@@ -275,9 +250,10 @@ public class AttendanceServiceImpl implements AttendanceService {
                     Course course = courseRepository.findById(courseId)
                             .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
-                    User instructor = course.getInstructor() != null
-                            ? course.getInstructor()
-                            : currentUser;
+                    User instructor =
+                            course.getInstructor() != null
+                                    ? course.getInstructor()
+                                    : currentUser;
 
                     ClassSession newSession = ClassSession.builder()
                             .course(course)
@@ -291,4 +267,22 @@ public class AttendanceServiceImpl implements AttendanceService {
                 });
     }
 
+    // =========================================================
+    // 🔁 LEGACY (compatibilidad)
+    // =========================================================
+
+    @Override
+    @Transactional
+    public void registerAttendanceByCourse(
+            Long courseId,
+            Map<Long, Boolean> attendanceMap
+    ) {
+        registerAttendance(
+                getOrCreateTodaySession(courseId).getId(),
+                attendanceMap.entrySet()
+                        .stream()
+                        .map(e -> new AttendanceMarkDTO(e.getKey(), e.getValue()))
+                        .toList()
+        );
+    }
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
@@ -43,4 +44,21 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         ORDER BY p.year DESC, p.month DESC
     """)
     List<Payment> findByStudent(@Param("studentId") Long studentId);
+
+    @Query("""
+    select p
+    from Payment p
+    where p.student.id = :studentId
+      and p.course.id = :courseId
+      and p.status = 'PAID'
+    order by p.year desc, p.month desc
+""")
+    Optional<Payment> findLastPayment(Long studentId, Long courseId);
+
+    Optional<Payment> findTopByStudentIdAndCourseIdOrderByPaidAtDesc(
+            Long studentId,
+            Long courseId
+    );
+
+
 }

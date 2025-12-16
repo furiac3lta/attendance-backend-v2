@@ -29,4 +29,7 @@ public interface AttendanceService {
     ClassSession getOrCreateTodaySession(Long courseId);
 
     List<CourseMonthlyAttendanceDTO> getCourseMonthlyStats(Long courseId, int month, int year);
+
+
+
 }

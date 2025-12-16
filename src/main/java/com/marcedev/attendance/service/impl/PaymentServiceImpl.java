@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.*;
 
 @Service
@@ -30,7 +31,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
 
-    // ========================= CREATE PAYMENT =========================
+    // ======================================================
+    // 💰 CREATE PAYMENT
+    // ======================================================
     @Override
     @Transactional
     public PaymentDTO createPayment(PaymentCreateDTO dto) {
@@ -41,8 +44,8 @@ public class PaymentServiceImpl implements PaymentService {
         Course course = courseRepository.findById(dto.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
-        boolean alreadyPaid = paymentRepository
-                .existsByStudentIdAndCourseIdAndMonthAndYearAndStatus(
+        boolean alreadyPaid =
+                paymentRepository.existsByStudentIdAndCourseIdAndMonthAndYearAndStatus(
                         student.getId(),
                         course.getId(),
                         dto.getMonth(),
@@ -67,13 +70,15 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment saved = paymentRepository.save(payment);
 
-        // 🔥 ENROLLMENT (CLAVE)
+        // 🔥 Enrollment siempre activo si paga
         createOrActivateEnrollment(student, course);
 
         return toDTO(saved);
     }
 
-    // ========================= LISTADOS =========================
+    // ======================================================
+    // 📄 LISTADOS
+    // ======================================================
     @Override
     public List<PaymentDTO> listByCourse(Long courseId, int month, int year) {
         return paymentRepository.findByCourseMonthYear(courseId, month, year)
@@ -90,7 +95,9 @@ public class PaymentServiceImpl implements PaymentService {
                 .toList();
     }
 
-    // ========================= STATUS =========================
+    // ======================================================
+    // ✅ STATUS MENSUAL (legacy / vistas)
+    // ======================================================
     @Override
     public Map<Long, Boolean> getPaymentStatusByCourse(Long courseId, int month, int year) {
 
@@ -107,17 +114,18 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public boolean isStudentPaid(Long studentId, Long courseId, int month, int year) {
-        return paymentRepository
-                .existsByStudentIdAndCourseIdAndMonthAndYearAndStatus(
-                        studentId,
-                        courseId,
-                        month,
-                        year,
-                        PaymentStatus.PAID
-                );
+        return paymentRepository.existsByStudentIdAndCourseIdAndMonthAndYearAndStatus(
+                studentId,
+                courseId,
+                month,
+                year,
+                PaymentStatus.PAID
+        );
     }
 
-    // ========================= REGISTER PAYMENT =========================
+    // ======================================================
+    // 🧾 REGISTER PAYMENT (request simple)
+    // ======================================================
     @Override
     @Transactional
     public void registerPayment(PaymentCreateRequest request) {
@@ -148,11 +156,45 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentRepository.save(payment);
 
-        // 🔥 ENROLLMENT (CLAVE)
+        // 🔥 Enrollment siempre activo
         createOrActivateEnrollment(student, course);
     }
 
-    // ========================= ENROLLMENT LOGIC =========================
+    // ======================================================
+    // 🧠 REGLA DEFINITIVA — DÍA 10
+    // ======================================================
+    @Override
+    public boolean isStudentUpToDate(Long studentId, Long courseId) {
+
+        Optional<Payment> lastPaymentOpt =
+                paymentRepository.findTopByStudentIdAndCourseIdOrderByPaidAtDesc(
+                        studentId,
+                        courseId
+                );
+
+        if (lastPaymentOpt.isEmpty()) {
+            return false; // nunca pagó
+        }
+
+        Payment lastPayment = lastPaymentOpt.get();
+
+        // Mes que cubre el pago
+        YearMonth coveredMonth = YearMonth.of(
+                lastPayment.getYear(),
+                lastPayment.getMonth()
+        );
+
+        // Vence el día 10 del mes siguiente
+        LocalDate dueDate = coveredMonth
+                .plusMonths(1)
+                .atDay(10);
+
+        return !LocalDate.now().isAfter(dueDate);
+    }
+
+    // ======================================================
+    // 🔗 ENROLLMENT
+    // ======================================================
     private void createOrActivateEnrollment(User student, Course course) {
 
         Enrollment enrollment = enrollmentRepository
@@ -172,7 +214,9 @@ public class PaymentServiceImpl implements PaymentService {
         enrollmentRepository.save(enrollment);
     }
 
-    // ========================= DTO =========================
+    // ======================================================
+    // 🔁 DTO
+    // ======================================================
     private PaymentDTO toDTO(Payment p) {
         return PaymentDTO.builder()
                 .id(p.getId())

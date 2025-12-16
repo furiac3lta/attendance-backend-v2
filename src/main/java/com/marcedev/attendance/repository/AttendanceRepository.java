@@ -113,5 +113,27 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findByStudentIdAndClassSessionId(Long studentId, Long classSessionId);
 
+    @Query("""
+    select count(distinct a.student.id)
+    from Attendance a
+    where a.organization.id = :orgId
+      and a.hasDebt = false
+""")
+    long countStudentsUpToDate(Long orgId);
+
+    @Query("""
+    select count(distinct a.student.id)
+    from Attendance a
+    where a.organization.id = :orgId
+      and a.hasDebt = true
+""")
+long countStudentsWithDebt(Long orgId);
+
+    @Query("""
+    select count(distinct a.student.id)
+    from Attendance a
+    where a.organization.id = :orgId
+""")
+    long countDistinctStudentsByOrganization(Long orgId);
 
 }

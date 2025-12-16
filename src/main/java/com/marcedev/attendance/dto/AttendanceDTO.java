@@ -36,5 +36,6 @@ public class AttendanceDTO {
     private String takenByRole;
     private LocalDateTime takenAt;
 
+    private boolean hasDebt;
 
 }
