@@ -30,4 +30,6 @@ public interface UserService {
             Long courseId,
             Pageable pageable
     ) ;
+
+    User getAuthenticatedUser();
 }

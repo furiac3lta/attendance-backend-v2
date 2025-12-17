@@ -1,7 +1,12 @@
 package com.marcedev.attendance.dto;
 
+
+import java.math.BigDecimal;
+
 public record AdminDashboardDTO(
-        long totalStudents,
-        long studentsUpToDate,
-        long studentsWithDebt
+        String organizationName,
+        long activeStudents,
+        long paidStudents,
+        long unpaidStudents,
+        BigDecimal totalIncome
 ) {}

@@ -2,13 +2,16 @@ package com.marcedev.attendance.service.impl;
 
 import com.marcedev.attendance.dto.AdminDashboardDTO;
 import com.marcedev.attendance.dto.OrganizationDashboardDTO;
+import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.PaymentMethod;
 import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.AttendanceRepository;
 import com.marcedev.attendance.repository.DashboardRepository;
+import com.marcedev.attendance.repository.PaymentRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.DashboardService;
+import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,21 +29,9 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final DashboardRepository dashboardRepository;
     private final AttendanceRepository attendanceRepository;
+    private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
-
-    // =====================================================
-    // 🔐 AUTH
-    // =====================================================
-    private User getAuthenticatedUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("No hay usuario autenticado");
-        }
-
-        return userRepository.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-    }
+    private final UserService userService;
 
     // =====================================================
     // 📊 DASHBOARD ORGANIZACIÓN (ADMIN)
@@ -62,7 +53,6 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         Long organizationId = admin.getOrganization().getId();
-
         int year = month.getYear();
         int monthValue = month.getMonthValue();
 
@@ -70,10 +60,12 @@ public class DashboardServiceImpl implements DashboardService {
         long totalStudents =
                 attendanceRepository.countDistinctStudentsByOrganization(organizationId);
 
-        long debtStudents =
-                attendanceRepository.countStudentsWithDebt(organizationId);
+        long paidStudents =
+                paymentRepository.countPaidStudentsByOrganization(
+                        organizationId, year, monthValue
+                );
 
-        long paidStudents = totalStudents - debtStudents;
+        long debtStudents = totalStudents - paidStudents;
 
         // ================= ALUMNOS POR CURSO =================
         Map<String, Long> studentsByCourse = new HashMap<>();
@@ -131,32 +123,50 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     // =====================================================
-    // 🧭 DASHBOARD ADMIN GLOBAL (ADMIN / SUPER_ADMIN)
+    // 🧭 DASHBOARD ADMIN (ADMIN de la ORGANIZACIÓN)
     // =====================================================
     @Override
     public AdminDashboardDTO getAdminDashboard() {
 
-        User currentUser = getAuthenticatedUser();
+        User currentUser = userService.getAuthenticatedUser();
 
-        if (currentUser.getRole() != Rol.ADMIN
-                && currentUser.getRole() != Rol.SUPER_ADMIN) {
-            throw new RuntimeException("No autorizado");
+        if (currentUser.getRole() != Rol.ADMIN) {
+            throw new RuntimeException("Solo ADMIN puede acceder a este dashboard");
         }
 
-        Long orgId = currentUser.getOrganization().getId();
+        Organization org = currentUser.getOrganization();
+        if (org == null) {
+            throw new RuntimeException("El admin no tiene organización asignada");
+        }
 
-        long totalStudents =
+        String organizationName = org.getName();
+        Long orgId = org.getId();
+
+        YearMonth now = YearMonth.now();
+        int year = now.getYear();
+        int month = now.getMonthValue();
+
+        long activeStudents =
                 attendanceRepository.countDistinctStudentsByOrganization(orgId);
 
-        long studentsWithDebt =
-                attendanceRepository.countStudentsWithDebt(orgId);
+        long paidStudents =
+                paymentRepository.countPaidStudentsByOrganization(
+                        orgId, year, month
+                );
 
-        long studentsUpToDate = totalStudents - studentsWithDebt;
+        long unpaidStudents = activeStudents - paidStudents;
+
+        BigDecimal totalIncome =
+                paymentRepository.sumPaidAmountByOrganization(orgId);
+
+        totalIncome = totalIncome != null ? totalIncome : BigDecimal.ZERO;
 
         return new AdminDashboardDTO(
-                totalStudents,
-                studentsUpToDate,
-                studentsWithDebt
+                organizationName,
+                activeStudents,
+                paidStudents,
+                unpaidStudents,
+                totalIncome
         );
     }
 }

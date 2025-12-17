@@ -232,6 +232,20 @@ public class UserServiceImpl implements UserService {
         return userRepository.filterUsers(search, roleEnum, orgId, courseId, pageable);
     }
 
+    @Override
+    public User getAuthenticatedUser() {
 
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Usuario no autenticado");
+        }
+
+        String email = authentication.getName();
+
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
 
 }

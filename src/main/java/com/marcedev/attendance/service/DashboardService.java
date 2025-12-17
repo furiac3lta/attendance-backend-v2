@@ -7,9 +7,9 @@ import java.time.YearMonth;
 
 public interface DashboardService {
 
-    OrganizationDashboardDTO getOrganizationDashboard(YearMonth month);
     // Dashboard por organización (ADMIN / SUPER)
+    OrganizationDashboardDTO getOrganizationDashboard(YearMonth month);
 
-    // 🔥 NUEVO — Dashboard ADMIN limpio (al día vs deuda)
+    // 🔥 Dashboard ADMIN global (pagaron vs no pagaron)
     AdminDashboardDTO getAdminDashboard();
 }

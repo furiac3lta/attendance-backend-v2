@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,6 +60,51 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             Long studentId,
             Long courseId
     );
+    @Query("""
+    SELECT COUNT(DISTINCT p.student.id)
+    FROM Payment p
+    WHERE p.month = :month
+      AND p.year = :year
+      AND p.status = 'PAID'
+""")
+    long countPaidStudents(
+            @Param("month") int month,
+            @Param("year") int year
+    );
 
+    @Query("""
+    SELECT COALESCE(SUM(p.amount), 0)
+    FROM Payment p
+    WHERE p.month = :month
+      AND p.year = :year
+      AND p.status = 'PAID'
+""")
+    java.math.BigDecimal sumPaidAmount(
+            @Param("month") int month,
+            @Param("year") int year
+    );
+
+    @Query("""
+    SELECT COALESCE(SUM(p.amount), 0)
+    FROM Payment p
+    WHERE p.course.organization.id = :organizationId
+      AND p.status = 'PAID'
+""")
+    BigDecimal sumPaidAmountByOrganization(
+            @Param("organizationId") Long organizationId
+    );
+    @Query("""
+    SELECT COUNT(DISTINCT p.student.id)
+    FROM Payment p
+    WHERE p.course.organization.id = :orgId
+      AND p.year = :year
+      AND p.month = :month
+      AND p.status = 'PAID'
+""")
+    long countPaidStudentsByOrganization(
+            @Param("orgId") Long orgId,
+            @Param("year") int year,
+            @Param("month") int month
+    );
 
 }
