@@ -3,12 +3,15 @@ package com.marcedev.attendance.service.impl;
 import com.marcedev.attendance.dto.AdminDashboardDTO;
 import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.dto.OrganizationDashboardDTO;
+import com.marcedev.attendance.entities.Enrollment;
 import com.marcedev.attendance.entities.Organization;
+import com.marcedev.attendance.entities.Payment;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.PaymentMethod;
 import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.*;
 import com.marcedev.attendance.service.DashboardService;
+import com.marcedev.attendance.service.PaymentService;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,8 @@ import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,8 @@ public class DashboardServiceImpl implements DashboardService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final PaymentService paymentService; // ✅ USAR ESTE
+private final CourseRepository courseRepository;
 private final EnrollmentRepository enrollmentRepository;
     // =====================================================
     // 📊 DASHBOARD ORGANIZACIÓN (ADMIN)
@@ -169,17 +176,20 @@ private final EnrollmentRepository enrollmentRepository;
         );
     }
 
+    // =====================================================
+    // 🚨 MOROSOS (ADMIN)
+    // =====================================================
     @Override
     public List<DebtorDTO> getDebtors() {
 
         User admin = userService.getAuthenticatedUser();
 
-        if (admin.getOrganization() == null) {
-            throw new RuntimeException("El admin no tiene organización");
-        }
+        YearMonth now = YearMonth.now();
 
-        return enrollmentRepository.findDebtorsByOrganization(
-                admin.getOrganization().getId()
+        return paymentRepository.findDebtorsByOrganization(
+                admin.getOrganization().getId(),
+                now.getMonthValue(),
+                now.getYear()
         );
     }
 

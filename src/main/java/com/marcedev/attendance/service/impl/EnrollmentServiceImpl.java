@@ -65,4 +65,5 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public long countActiveByOrganization(Long organizationId) {
         return enrollmentRepository.countActiveByOrganization(organizationId);
     }
+
 }

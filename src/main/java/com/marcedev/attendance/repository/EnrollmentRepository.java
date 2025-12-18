@@ -34,24 +34,39 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Optional<Enrollment> findByUserIdAndCourseId(Long userId, Long courseId);
 
     @Query("""
-    SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
-        u.id,
-        u.fullName,
-        c.name
-    )
+        SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
+            u.id,
+            u.fullName,
+            c.name
+        )
+        FROM Enrollment e
+        JOIN e.user u
+        JOIN e.course c
+        WHERE c.organization.id = :orgId
+          AND e.active = true
+          AND NOT EXISTS (
+              SELECT 1
+              FROM Payment p
+              WHERE p.student = u
+                AND p.course = c
+                AND p.status = 'PAID'
+                AND p.month = :month
+                AND p.year = :year
+          )
+    """)
+    List<DebtorDTO> findDebtorsByOrganization(
+            @Param("orgId") Long orgId,
+            @Param("month") int month,
+            @Param("year") int year
+    );
+    @Query("""
+    SELECT e
     FROM Enrollment e
-    JOIN e.user u
     JOIN e.course c
     WHERE c.organization.id = :orgId
       AND e.active = true
-      AND NOT EXISTS (
-          SELECT 1
-          FROM Payment p
-          WHERE p.student = u
-            AND p.course = c
-            AND p.status = com.marcedev.attendance.enums.PaymentStatus.PAID
-      )
 """)
-    List<DebtorDTO> findDebtorsByOrganization(@Param("orgId") Long orgId);
+    List<Enrollment> findActiveByOrganization(@Param("orgId") Long orgId);
+    List<Enrollment> findByCourseOrganizationIdAndActiveTrue(Long organizationId);
 
 }

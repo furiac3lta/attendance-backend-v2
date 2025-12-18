@@ -5,6 +5,7 @@ import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.dto.OrganizationDashboardDTO;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.repository.PaymentRepository;
+import com.marcedev.attendance.service.CourseService;
 import com.marcedev.attendance.service.DashboardService;
 import com.marcedev.attendance.service.PaymentService;
 import com.marcedev.attendance.service.UserService;
@@ -25,7 +26,7 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
     private final UserService userService;
-    private final PaymentService paymentService;
+    private final CourseService courseService;
 
     // 🔹 DASHBOARD ORGANIZACIÓN
     @GetMapping("/organization")
@@ -47,19 +48,11 @@ public class DashboardController {
     }
 
     @GetMapping("/admin/debtors")
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<DebtorDTO> getDebtors(Authentication authentication) {
-
-        // 🔐 viene como UserDetails
-        String email = authentication.getName();
-
-        User admin = userService.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Admin no encontrado"));
-
-        return paymentService.getDebtorsByOrganization(
-                admin.getOrganization().getId()
-        );
+    public List<DebtorDTO> getDebtors() {
+        return dashboardService.getDebtors();
     }
+
+
 
 
 

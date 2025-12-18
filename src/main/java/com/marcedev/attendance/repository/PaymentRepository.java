@@ -107,4 +107,55 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("year") int year,
             @Param("month") int month
     );
+
+    @Query("""
+    SELECT DISTINCT p.student.id, p.course.id
+    FROM Payment p
+    WHERE p.status = 'PAID'
+      AND p.month = :month
+      AND p.year = :year
+      AND p.course.organization.id = :orgId
+""")
+    List<Object[]> findPaidStudents(
+            @Param("orgId") Long orgId,
+            @Param("month") int month,
+            @Param("year") int year
+    );
+
+
+
+        boolean existsByStudentIdAndCourseIdAndStatusAndMonthAndYear(
+                Long studentId,
+                Long courseId,
+                String status,
+                int month,
+                int year
+        );
+
+    @Query("""
+SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
+    u.id,
+    u.fullName,
+    c.name
+)
+FROM Course c
+JOIN c.students u
+WHERE c.organization.id = :orgId
+  AND u.role = 'USER'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM Payment p
+      WHERE p.student = u
+        AND p.course = c
+        AND p.status = 'PAID'
+        AND p.month = :month
+        AND p.year = :year
+  )
+""")
+    List<DebtorDTO> findDebtorsByOrganization(
+            @Param("orgId") Long orgId,
+            @Param("month") int month,
+            @Param("year") int year
+    );
+
 }

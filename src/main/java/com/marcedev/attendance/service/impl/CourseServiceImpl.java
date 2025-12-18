@@ -1,10 +1,12 @@
 package com.marcedev.attendance.service.impl;
 
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.entities.Course;
 import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.CourseRepository;
+import com.marcedev.attendance.repository.EnrollmentRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.CourseService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,7 @@ public class CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
-
+    private final EnrollmentRepository enrollmentRepository;
     @Override
     public List<Course> findAll() {
         return courseRepository.findAll();
@@ -194,6 +196,18 @@ public class CourseServiceImpl implements CourseService {
 
         course.setInstructor(instructor);
         courseRepository.save(course);
+    }
+    @Override
+    public List<DebtorDTO> getDebtorsByOrganization(
+            Long organizationId,
+            int month,
+            int year
+    ) {
+        return enrollmentRepository.findDebtorsByOrganization(
+                organizationId,
+                month,
+                year
+        );
     }
 
 }

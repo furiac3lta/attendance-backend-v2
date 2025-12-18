@@ -17,5 +17,4 @@ public interface PaymentService {
 
     Map<Long, Boolean> getPaymentStatusByCourse(Long courseId, int month, int year);
     boolean isStudentPaid(Long studentId, Long courseId, int month, int year);
-    List<DebtorDTO> getDebtorsByOrganization(Long organizationId);
 }

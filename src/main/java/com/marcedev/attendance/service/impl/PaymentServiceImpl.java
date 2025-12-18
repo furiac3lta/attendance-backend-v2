@@ -234,9 +234,5 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
-    @Override
-    public List<DebtorDTO> getDebtorsByOrganization(Long organizationId) {
-        return enrollmentRepository.findDebtorsByOrganization(organizationId);
-    }
 
 }
