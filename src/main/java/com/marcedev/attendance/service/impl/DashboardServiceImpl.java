@@ -1,15 +1,13 @@
 package com.marcedev.attendance.service.impl;
 
 import com.marcedev.attendance.dto.AdminDashboardDTO;
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.dto.OrganizationDashboardDTO;
 import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.PaymentMethod;
 import com.marcedev.attendance.enums.Rol;
-import com.marcedev.attendance.repository.AttendanceRepository;
-import com.marcedev.attendance.repository.DashboardRepository;
-import com.marcedev.attendance.repository.PaymentRepository;
-import com.marcedev.attendance.repository.UserRepository;
+import com.marcedev.attendance.repository.*;
 import com.marcedev.attendance.service.DashboardService;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -32,7 +31,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final UserService userService;
-
+private final EnrollmentRepository enrollmentRepository;
     // =====================================================
     // 📊 DASHBOARD ORGANIZACIÓN (ADMIN)
     // =====================================================
@@ -169,4 +168,19 @@ public class DashboardServiceImpl implements DashboardService {
                 totalIncome
         );
     }
+
+    @Override
+    public List<DebtorDTO> getDebtors() {
+
+        User admin = userService.getAuthenticatedUser();
+
+        if (admin.getOrganization() == null) {
+            throw new RuntimeException("El admin no tiene organización");
+        }
+
+        return enrollmentRepository.findDebtorsByOrganization(
+                admin.getOrganization().getId()
+        );
+    }
+
 }

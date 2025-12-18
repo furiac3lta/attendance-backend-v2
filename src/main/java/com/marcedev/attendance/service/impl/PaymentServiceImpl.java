@@ -1,5 +1,6 @@
 package com.marcedev.attendance.service.impl;
 
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.dto.PaymentCreateDTO;
 import com.marcedev.attendance.dto.PaymentCreateRequest;
 import com.marcedev.attendance.dto.PaymentDTO;
@@ -232,4 +233,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .paidAt(p.getPaidAt())
                 .build();
     }
+
+    @Override
+    public List<DebtorDTO> getDebtorsByOrganization(Long organizationId) {
+        return enrollmentRepository.findDebtorsByOrganization(organizationId);
+    }
+
 }

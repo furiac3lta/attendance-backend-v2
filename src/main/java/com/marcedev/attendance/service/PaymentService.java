@@ -1,5 +1,6 @@
 package com.marcedev.attendance.service;
 
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.dto.PaymentCreateDTO;
 import com.marcedev.attendance.dto.PaymentCreateRequest;
 import com.marcedev.attendance.dto.PaymentDTO;
@@ -16,4 +17,5 @@ public interface PaymentService {
 
     Map<Long, Boolean> getPaymentStatusByCourse(Long courseId, int month, int year);
     boolean isStudentPaid(Long studentId, Long courseId, int month, int year);
+    List<DebtorDTO> getDebtorsByOrganization(Long organizationId);
 }

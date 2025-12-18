@@ -1,5 +1,6 @@
 package com.marcedev.attendance.repository;
 
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.entities.Payment;
 import com.marcedev.attendance.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -106,5 +107,4 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("year") int year,
             @Param("month") int month
     );
-
 }

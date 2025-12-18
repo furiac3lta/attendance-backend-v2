@@ -1,5 +1,6 @@
 package com.marcedev.attendance.repository;
 
+import com.marcedev.attendance.dto.DebtorDTO;
 import com.marcedev.attendance.entities.Enrollment;
 import com.marcedev.attendance.enums.PaymentMethod;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -122,4 +123,26 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
             @Param("month") int month,
             @Param("method") PaymentMethod method
     );
+    @Query("""
+    SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
+        u.id,
+        u.fullName,
+        c.name
+    )
+    FROM Enrollment e
+    JOIN e.user u
+    JOIN e.course c
+    WHERE c.organization.id = :orgId
+      AND e.active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM Payment p
+          WHERE p.student = u
+            AND p.course = c
+            AND p.status = com.marcedev.attendance.enums.PaymentStatus.PAID
+      )
+""")
+    List<DebtorDTO> findDebtorsByOrganization(@Param("orgId") Long orgId);
+
+
 }
