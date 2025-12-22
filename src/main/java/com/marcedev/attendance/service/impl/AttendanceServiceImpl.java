@@ -28,8 +28,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final UserRepository userRepository;
     private final AttendanceMapper attendanceMapper;
     private final CourseRepository courseRepository;
-
-    // 🆕 SERVICIO DE PAGOS
     private final PaymentService paymentService;
 
     // =========================================================
@@ -61,84 +59,60 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         User currentUser = getAuthenticatedUser();
 
-        // ❌ USER no puede tomar asistencia
         if (currentUser.getRole() == Rol.USER) {
-            throw new RuntimeException("No autorizado para tomar asistencia");
+            throw new RuntimeException("No autorizado");
         }
 
-        var existingOpt = attendanceRepository.findByStudentIdAndClassSessionId(
-                dto.getStudentId(),
-                dto.getClassSessionId()
+        Attendance entity = attendanceRepository
+                .findByStudentIdAndClassSessionId(dto.getStudentId(), dto.getClassSessionId())
+                .orElseGet(() -> attendanceMapper.toEntity(dto));
+
+        ClassSession session = classSessionRepository.findById(dto.getClassSessionId())
+                .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
+
+        User student = userRepository.findById(dto.getStudentId())
+                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+
+        boolean upToDate = paymentService.isStudentUpToDate(
+                student.getId(),
+                session.getCourse().getId()
         );
 
-        Attendance entity;
+        entity.setClassSession(session);
+        entity.setStudent(student);
+        entity.setCourse(session.getCourse());
+        entity.setOrganization(session.getOrganization());
+        entity.setAttended(dto.isAttended());
+        entity.setHasDebt(!upToDate);
+        entity.setTakenBy(currentUser);
+        entity.setTakenAt(LocalDateTime.now());
 
-        // ===================== UPDATE =====================
-        if (existingOpt.isPresent()) {
-
-            entity = existingOpt.get();
-
-            ClassSession session = entity.getClassSession();
-            User student = entity.getStudent();
-
-            boolean upToDate =
-                    paymentService.isStudentUpToDate(
-                            student.getId(),
-                            session.getCourse().getId()
-                    );
-
-            entity.setAttended(dto.isAttended());
-            entity.setHasDebt(!upToDate); // ✅ REGLA DEFINITIVA
-            entity.setTakenBy(currentUser);
-            entity.setTakenAt(LocalDateTime.now());
-        }
-
-        // ===================== CREATE =====================
-        else {
-
-            entity = attendanceMapper.toEntity(dto);
-
-            ClassSession session = classSessionRepository.findById(dto.getClassSessionId())
-                    .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
-
-            User student = userRepository.findById(dto.getStudentId())
-                    .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-
-            boolean upToDate =
-                    paymentService.isStudentUpToDate(
-                            student.getId(),
-                            session.getCourse().getId()
-                    );
-
-            entity.setClassSession(session);
-            entity.setStudent(student);
-            entity.setCourse(session.getCourse());
-            entity.setOrganization(session.getOrganization());
-            entity.setHasDebt(!upToDate); // ✅ CLAVE
-            entity.setTakenBy(currentUser);
-            entity.setTakenAt(LocalDateTime.now());
-        }
-
-        Attendance saved = attendanceRepository.save(entity);
-        return attendanceMapper.toDTO(saved);
+        return attendanceMapper.toDTO(attendanceRepository.save(entity));
     }
 
     @Override
     public List<AttendanceDTO> findAll() {
         User currentUser = getAuthenticatedUser();
 
-        List<Attendance> attendances = switch (currentUser.getRole()) {
+        List<Attendance> list = switch (currentUser.getRole()) {
             case SUPER_ADMIN -> attendanceRepository.findAll();
             case ADMIN, INSTRUCTOR ->
                     attendanceRepository.findByOrganizationId(
                             currentUser.getOrganization().getId()
                     );
-            default -> throw new RuntimeException("No tiene permisos");
+            default -> throw new RuntimeException("No autorizado");
         };
 
-        return attendances.stream()
+        return list.stream()
                 .map(attendanceMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public AttendanceDTO findById(Long id) {
+        return attendanceRepository.findById(id)
+                .map(attendanceMapper::toDTO)
+                .orElseThrow(() -> new RuntimeException("Asistencia no encontrada"));
     }
 
     @Override
@@ -158,13 +132,6 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
-    public AttendanceDTO findById(Long id) {
-        return attendanceRepository.findById(id)
-                .map(attendanceMapper::toDTO)
-                .orElseThrow(() -> new RuntimeException("Asistencia no encontrada"));
-    }
-
-    @Override
     public void deleteById(Long id) {
         User currentUser = getAuthenticatedUser();
 
@@ -176,7 +143,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     // =========================================================
-    // ✅ API NUEVA (por sesión)
+    // ✅ REGISTRO POR SESIÓN (FIX DUPLICADOS)
     // =========================================================
 
     @Override
@@ -186,7 +153,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         User currentUser = getAuthenticatedUser();
 
         if (currentUser.getRole() == Rol.USER) {
-            throw new RuntimeException("No autorizado para tomar asistencia");
+            throw new RuntimeException("No autorizado");
         }
 
         ClassSession session = classSessionRepository.findById(sessionId)
@@ -200,23 +167,25 @@ public class AttendanceServiceImpl implements AttendanceService {
             User student = userRepository.findById(mark.getUserId())
                     .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-            boolean upToDate =
-                    paymentService.isStudentUpToDate(
-                            student.getId(),
-                            course.getId()
-                    );
+            boolean upToDate = paymentService.isStudentUpToDate(
+                    student.getId(),
+                    course.getId()
+            );
 
-            Attendance a = new Attendance();
-            a.setClassSession(session);
-            a.setStudent(student);
-            a.setAttended(mark.isPresent());
-            a.setHasDebt(!upToDate); // ✅ CLAVE
-            a.setCourse(course);
-            a.setOrganization(org);
-            a.setTakenBy(currentUser);
-            a.setTakenAt(LocalDateTime.now());
+            Attendance attendance = attendanceRepository
+                    .findByStudentIdAndClassSessionId(student.getId(), sessionId)
+                    .orElseGet(Attendance::new);
 
-            attendanceRepository.save(a);
+            attendance.setClassSession(session);
+            attendance.setStudent(student);
+            attendance.setCourse(course);
+            attendance.setOrganization(org);
+            attendance.setAttended(mark.isPresent());
+            attendance.setHasDebt(!upToDate);
+            attendance.setTakenBy(currentUser);
+            attendance.setTakenAt(LocalDateTime.now());
+
+            attendanceRepository.save(attendance);
         }
     }
 
@@ -226,12 +195,13 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public List<CourseMonthlyAttendanceDTO> getCourseMonthlyStats(
-            Long courseId,
-            int month,
-            int year
-    ) {
+            Long courseId, int month, int year) {
         return attendanceRepository.getMonthlyCourseStats(courseId, month, year);
     }
+
+    // =========================================================
+    // 📅 SESIÓN DIARIA
+    // =========================================================
 
     @Override
     public ClassSession getOrCreateTodaySession(Long courseId) {
@@ -239,7 +209,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         User currentUser = getAuthenticatedUser();
 
         if (currentUser.getRole() == Rol.USER) {
-            throw new RuntimeException("No autorizado para crear sesiones");
+            throw new RuntimeException("No autorizado");
         }
 
         LocalDate today = LocalDate.now();
@@ -255,20 +225,20 @@ public class AttendanceServiceImpl implements AttendanceService {
                                     ? course.getInstructor()
                                     : currentUser;
 
-                    ClassSession newSession = ClassSession.builder()
-                            .course(course)
-                            .date(today)
-                            .name(course.getName() + " - " + today)
-                            .instructor(instructor)
-                            .organization(course.getOrganization())
-                            .build();
-
-                    return classSessionRepository.save(newSession);
+                    return classSessionRepository.save(
+                            ClassSession.builder()
+                                    .course(course)
+                                    .date(today)
+                                    .name(course.getName() + " - " + today)
+                                    .instructor(instructor)
+                                    .organization(course.getOrganization())
+                                    .build()
+                    );
                 });
     }
 
     // =========================================================
-    // 🔁 LEGACY (compatibilidad)
+    // 🔁 LEGACY
     // =========================================================
 
     @Override
