@@ -1,10 +1,8 @@
 package com.marcedev.attendance.service;
 
-import com.marcedev.attendance.entities.Course;
 import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
-import com.marcedev.attendance.repository.CourseRepository;
 import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -19,33 +17,28 @@ public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
-    private final CourseRepository courseRepository;
 
     /**
-     * 🔹 Elimina una organización y limpia todas sus relaciones.
+     * 🔹 Desactiva una organización (soft delete).
      */
     @Transactional
-    public void deleteById(Long id) {
+    public void deactivateOrganization(Long id) {
         Organization org = organizationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
 
-        // 🧩 1️⃣ Desvincular cursos
-        List<Course> courses = courseRepository.findByOrganizationId(id);
-        for (Course c : courses) {
-            c.setInstructor(null);
-            c.setOrganization(null);
-        }
-        courseRepository.saveAll(courses);
+        org.setActive(false);
+        organizationRepository.save(org);
+    }
 
-        // 🧩 2️⃣ Desvincular usuarios
-        List<User> users = userRepository.findByOrganizationId(id);
-        for (User u : users) {
-            u.setOrganization(null);
-        }
-        userRepository.saveAll(users);
-
-        // 🧩 3️⃣ Finalmente eliminar la organización
-        organizationRepository.delete(org);
+    /**
+     * 🔹 Reactiva una organización.
+     */
+    @Transactional
+    public void activateOrganization(Long id) {
+        Organization org = organizationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
+        org.setActive(true);
+        organizationRepository.save(org);
     }
 
     /**
@@ -53,9 +46,9 @@ public class OrganizationService {
      */
     @Transactional
     public void assignAdmin(Long organizationId, Long userId) {
-        Organization org = organizationRepository.findById(organizationId)
+        Organization org = organizationRepository.findByIdAndActiveTrue(organizationId)
                 .orElseThrow(() -> new RuntimeException("Organización no encontrada."));
-        User admin = userRepository.findById(userId)
+        User admin = userRepository.findByIdAndActiveTrue(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
 
         if (admin.getRole() != Rol.ADMIN) {

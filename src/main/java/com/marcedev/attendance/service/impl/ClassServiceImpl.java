@@ -32,7 +32,7 @@ public class ClassServiceImpl implements ClassService {
             throw new RuntimeException("El curso es requerido");
         }
 
-        var course = courseRepository.findById(session.getCourse().getId())
+        var course = courseRepository.findByIdAndActiveTrue(session.getCourse().getId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         var instructor = (course.getInstructor() != null)
@@ -66,7 +66,7 @@ public class ClassServiceImpl implements ClassService {
 
         LocalDate today = LocalDate.now();
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado."));
 
         return classSessionRepository.findByCourseIdAndDate(courseId, today)
@@ -74,7 +74,7 @@ public class ClassServiceImpl implements ClassService {
 
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                     String email = auth.getName();
-                    User currentUser = userRepository.findByEmail(email).orElse(null);
+                    User currentUser = userRepository.findByEmailAndActiveTrue(email).orElse(null);
 
                     Organization org = course.getOrganization() != null
                             ? course.getOrganization()
@@ -117,7 +117,7 @@ public class ClassServiceImpl implements ClassService {
 
     @Override
     public Course getCourseById(Long courseId) {
-        return courseRepository.findById(courseId)
+        return courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado con id: " + courseId));
     }
 
@@ -135,7 +135,7 @@ public class ClassServiceImpl implements ClassService {
             throw new RuntimeException("No hay usuario autenticado");
         }
 
-        return userRepository.findByEmail(auth.getName())
+        return userRepository.findByEmailAndActiveTrue(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 

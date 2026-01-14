@@ -27,14 +27,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByRole(Rol role);
 
+    List<User> findByActiveTrue();
+
+    List<User> findByRoleAndActiveTrue(Rol role);
+
     List<User> findByOrganizationId(Long orgId);
+
+    List<User> findByOrganizationIdAndActiveTrue(Long orgId);
 
     Optional<User> findByEmail(String email);
 
-    @Query("SELECT DISTINCT u FROM User u JOIN u.courses c WHERE c.id IN :courseIds")
+    Optional<User> findByEmailAndActiveTrue(String email);
+
+    Optional<User> findByIdAndActiveTrue(Long id);
+
+    @Query("SELECT DISTINCT u FROM User u JOIN u.courses c WHERE c.id IN :courseIds AND c.active = true AND u.active = true")
     List<User> findDistinctByCoursesIdIn(@Param("courseIds") List<Long> courseIds);
 
     List<User> findByRoleAndOrganizationId(Rol role, Long organizationId);
+
+    List<User> findByRoleAndOrganizationIdAndActiveTrue(Rol role, Long organizationId);
 
     // ======================================================
     // ✔ FILTRO AVANZADO (PAGINADO) — ENUM limpio
@@ -43,18 +55,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
         SELECT DISTINCT u FROM User u
         LEFT JOIN u.organization o
         LEFT JOIN u.courses c
-        WHERE 
+        WHERE
             (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
                              OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))
         AND (:role IS NULL OR u.role = :role)
         AND (:orgId IS NULL OR o.id = :orgId)
-        AND (:courseId IS NULL OR c.id = :courseId)
+        AND (:active IS NULL OR u.active = :active)
+        AND (:courseId IS NULL OR (c.id = :courseId AND c.active = true))
         """)
     Page<User> filterUsers(
             @Param("search") String search,
             @Param("role") Rol role,
             @Param("orgId") Long orgId,
             @Param("courseId") Long courseId,
+            @Param("active") Boolean active,
             Pageable pageable
     );
     @Query("""
@@ -62,6 +76,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     FROM User u
     JOIN u.courses c
     WHERE c.id = :courseId
+      AND c.active = true
+      AND u.active = true
       AND u.role = com.marcedev.attendance.enums.Rol.USER
 """)
     List<User> findStudentsByCourseId(@Param("courseId") Long courseId);

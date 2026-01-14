@@ -1,0 +1,5 @@
+nombre,email,rol,cursos,organizacion
+Juan Perez,juan.perez@example.com,user,"Yoga;Pilates",
+Maria Lopez,maria.lopez@example.com,instructor,Karate,
+Admin Org,admin.org@example.com,admin,,"Dojo Central"
+Super Admin,super.admin@example.com,super_admin,,

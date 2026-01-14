@@ -3,6 +3,7 @@ package com.marcedev.attendance.controller;
 
 import com.marcedev.attendance.dto.InstructorDTO;
 import com.marcedev.attendance.dto.UserDTO;
+import com.marcedev.attendance.dto.UserImportResultDTO;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.CourseRepository;
@@ -12,10 +13,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,7 +40,8 @@ public class UserController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Long orgId,
-            @RequestParam(required = false) Long courseId
+            @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Boolean active
     ) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -46,10 +50,11 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
 
         Page<User> page;
+        Boolean activeFilter = active != null ? active : true;
 
         // 🔥 SUPER ADMIN — puede filtrar todo
         if (currentUser.getRole() == Rol.SUPER_ADMIN) {
-            page = userService.filterUsers(search, role, orgId, courseId, pageable);
+            page = userService.filterUsers(search, role, orgId, courseId, activeFilter, pageable);
         }
 
         // 🔥 ADMIN — solo su organización
@@ -58,7 +63,7 @@ public class UserController {
                     ? currentUser.getOrganization().getId()
                     : null;
 
-            page = userService.filterUsers(search, role, myOrgId, courseId, pageable);
+            page = userService.filterUsers(search, role, myOrgId, courseId, activeFilter, pageable);
         }
 
         // 🔥 OTROS — no pueden ver usuarios
@@ -71,6 +76,7 @@ public class UserController {
                 u.getFullName(),
                 u.getEmail(),
                 u.getRole().name(),
+                u.isActive(),
                 u.getOrganization() != null ? u.getOrganization().getName() : null,
                 u.getCourses() != null ? u.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 u.getOrganization() != null ? u.getOrganization().getId() : null
@@ -98,6 +104,20 @@ public class UserController {
     }
 
     // ==========================================================
+    // 📥 IMPORTAR USUARIOS DESDE EXCEL/CSV
+    // ==========================================================
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> importUsers(@RequestParam("file") MultipartFile file) {
+        Rol currentRole = getCurrentUserRole();
+        if (currentRole != Rol.SUPER_ADMIN && currentRole != Rol.ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Sin permisos.");
+        }
+
+        UserImportResultDTO result = userService.importUsersFromFile(file);
+        return ResponseEntity.ok(result);
+    }
+
+    // ==========================================================
     // ✅ EDITAR USUARIO (NUEVO – NECESARIO PARA NETLIFY)
     // ==========================================================
     @PutMapping("/{id}")
@@ -107,6 +127,29 @@ public class UserController {
     ) {
         UserDTO updated = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updated);
+    }
+
+    // ==========================================================
+    // ✅ ACTIVAR / DESACTIVAR USUARIO
+    // ==========================================================
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable Long id) {
+        Rol role = getCurrentUserRole();
+        if (role != Rol.SUPER_ADMIN && role != Rol.ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Sin permisos.");
+        }
+        userService.deactivateUser(id);
+        return ResponseEntity.ok("✅ Usuario desactivado.");
+    }
+
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<?> activate(@PathVariable Long id) {
+        Rol role = getCurrentUserRole();
+        if (role != Rol.SUPER_ADMIN && role != Rol.ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Sin permisos.");
+        }
+        userService.activateUser(id);
+        return ResponseEntity.ok("✅ Usuario activado.");
     }
 
     // ==========================================================
@@ -128,17 +171,20 @@ public class UserController {
     public ResponseEntity<?> getUsersByRole(@PathVariable Rol role) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
-        User currentUser = userRepository.findByEmail(email)
+        User currentUser = userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
 
         List<User> users;
         if (currentUser.getRole() == Rol.SUPER_ADMIN) {
-            users = userRepository.findByRole(role);
+            users = userRepository.findByRoleAndActiveTrue(role);
         } else if (currentUser.getRole() == Rol.ADMIN) {
             if (currentUser.getOrganization() == null) {
                 return ResponseEntity.badRequest().body("⚠️ Este admin no tiene organización asignada.");
             }
-            users = userRepository.findByRoleAndOrganizationId(role, currentUser.getOrganization().getId());
+            users = userRepository.findByRoleAndOrganizationIdAndActiveTrue(
+                    role,
+                    currentUser.getOrganization().getId()
+            );
         } else {
             return ResponseEntity.status(403).body("🚫 No tienes permisos para ver instructores.");
         }
@@ -166,7 +212,7 @@ public class UserController {
 
     @GetMapping("/instructors")
     public List<InstructorDTO> getInstructors() {
-        return userRepository.findByRole(Rol.INSTRUCTOR)
+        return userRepository.findByRoleAndActiveTrue(Rol.INSTRUCTOR)
                 .stream()
                 .map(u -> new InstructorDTO(
                         u.getId(),

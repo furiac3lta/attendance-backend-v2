@@ -41,7 +41,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new RuntimeException("No hay usuario autenticado");
         }
 
-        return userRepository.findByEmail(auth.getName())
+        return userRepository.findByEmailAndActiveTrue(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
@@ -70,7 +70,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         ClassSession session = classSessionRepository.findById(dto.getClassSessionId())
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
-        User student = userRepository.findById(dto.getStudentId())
+        User student = userRepository.findByIdAndActiveTrue(dto.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
         boolean upToDate = paymentService.isStudentUpToDate(
@@ -164,7 +164,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         for (AttendanceMarkDTO mark : marks) {
 
-            User student = userRepository.findById(mark.getUserId())
+            User student = userRepository.findByIdAndActiveTrue(mark.getUserId())
                     .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
             boolean upToDate = paymentService.isStudentUpToDate(
@@ -217,7 +217,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         return classSessionRepository.findByCourseIdAndDate(courseId, today)
                 .orElseGet(() -> {
 
-                    Course course = courseRepository.findById(courseId)
+                    Course course = courseRepository.findByIdAndActiveTrue(courseId)
                             .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
                     User instructor =

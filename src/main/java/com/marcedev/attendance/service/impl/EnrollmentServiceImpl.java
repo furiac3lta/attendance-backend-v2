@@ -28,10 +28,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Transactional
     public EnrollmentDTO enrollUser(Long userId, Long courseId) {
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndActiveTrue(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
         Enrollment enrollment = Enrollment.builder()

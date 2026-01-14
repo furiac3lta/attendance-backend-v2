@@ -29,6 +29,11 @@ public class Organization {
     private String phone;
     private String logoUrl;
 
+    /** Estado de la organización (soft delete) */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
     /** Admin principal de la organización */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id")

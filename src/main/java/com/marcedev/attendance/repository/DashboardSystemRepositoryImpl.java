@@ -14,21 +14,21 @@ public class DashboardSystemRepositoryImpl implements DashboardSystemRepository 
     @Override
     public long countOrganizations() {
         return em.createQuery(
-                "select count(o) from Organization o", Long.class
+                "select count(o) from Organization o where o.active = true", Long.class
         ).getSingleResult();
     }
 
     @Override
     public long countUsers() {
         return em.createQuery(
-                "select count(u) from User u", Long.class
+                "select count(u) from User u where u.active = true", Long.class
         ).getSingleResult();
     }
 
     @Override
     public long countByRole(Rol role) {
         return em.createQuery(
-                        "select count(u) from User u where u.role = :role", Long.class
+                        "select count(u) from User u where u.role = :role and u.active = true", Long.class
                 )
                 .setParameter("role", role)
                 .getSingleResult();
@@ -37,7 +37,7 @@ public class DashboardSystemRepositoryImpl implements DashboardSystemRepository 
     @Override
     public long countCourses() {
         return em.createQuery(
-                "select count(c) from Course c", Long.class
+                "select count(c) from Course c where c.active = true", Long.class
         ).getSingleResult();
     }
 

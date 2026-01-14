@@ -56,7 +56,7 @@ public class AuthServiceImpl implements AuthService {
         // Si quien crea tiene organización → asignar organización
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            userRepository.findByEmail(auth.getName()).ifPresent(current -> {
+            userRepository.findByEmailAndActiveTrue(auth.getName()).ifPresent(current -> {
                 if (current.getOrganization() != null)
                     user.setOrganization(current.getOrganization());
             });
@@ -78,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole().name(),
+                user.isActive(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
                 user.getCourses() != null ? user.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 user.getOrganization() != null ? user.getOrganization().getId() : null
@@ -103,7 +104,7 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+        User user = userRepository.findByEmailAndActiveTrue(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         // ======================================================
@@ -129,6 +130,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole().name(),
+                user.isActive(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
                 user.getCourses() != null
                         ? user.getCourses().stream().map(c -> c.getName()).toList()

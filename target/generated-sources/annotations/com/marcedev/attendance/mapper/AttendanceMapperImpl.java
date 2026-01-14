@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-13T18:12:04-0300",
+    date = "2026-01-14T02:27:54-0300",
     comments = "version: 1.6.2, compiler: javac, environment: Java 21.0.8 (Homebrew)"
 )
 @Component
@@ -42,6 +42,7 @@ public class AttendanceMapperImpl implements AttendanceMapper {
         attendanceDTO.takenAt( entity.getTakenAt() );
         attendanceDTO.id( entity.getId() );
         attendanceDTO.attended( entity.isAttended() );
+        attendanceDTO.hasDebt( entity.isHasDebt() );
 
         return attendanceDTO.build();
     }
@@ -55,6 +56,7 @@ public class AttendanceMapperImpl implements AttendanceMapper {
         Attendance.AttendanceBuilder attendance = Attendance.builder();
 
         attendance.attended( dto.isAttended() );
+        attendance.hasDebt( dto.isHasDebt() );
 
         return attendance.build();
     }

@@ -27,12 +27,17 @@ public class OrganizationController {
 
     // 🔹 Listar todas las organizaciones (solo SUPER_ADMIN)
     @GetMapping
-    public ResponseEntity<?> getAllOrganizations() {
+    public ResponseEntity<?> getAllOrganizations(@RequestParam(required = false) Boolean active) {
         User currentUser = getAuthenticatedUser();
+        boolean activeFilter = active != null ? active : true;
 
         // 🟣 SUPER_ADMIN ve todas las organizaciones
         if (currentUser.getRole() == Rol.SUPER_ADMIN) {
-            var dtos = organizationRepository.findAll().stream()
+            var organizations = activeFilter
+                    ? organizationRepository.findByActiveTrue()
+                    : organizationRepository.findByActiveFalse();
+
+            var dtos = organizations.stream()
                     .map(org -> OrganizationDTO.builder()
                             .id(org.getId())
                             .name(org.getName())
@@ -40,6 +45,7 @@ public class OrganizationController {
                             .phone(org.getPhone())
                             .address(org.getAddress())
                             .logoUrl(org.getLogoUrl())
+                            .active(org.isActive())
                             .adminFullName(org.getAdmin() != null ? org.getAdmin().getFullName() : null) // ✅ AQUI
                             .build())
                     .toList();
@@ -54,6 +60,9 @@ public class OrganizationController {
             }
 
             var org = currentUser.getOrganization();
+            if ((activeFilter && !org.isActive()) || (!activeFilter && org.isActive())) {
+                return ResponseEntity.ok(List.of());
+            }
             var dto = OrganizationDTO.builder()
                     .id(org.getId())
                     .name(org.getName())
@@ -61,6 +70,7 @@ public class OrganizationController {
                     .phone(org.getPhone())
                     .address(org.getAddress())
                     .logoUrl(org.getLogoUrl())
+                    .active(org.isActive())
                     .adminFullName(org.getAdmin() != null ? org.getAdmin().getFullName() : null) // ✅ AQUI
                     .build();
 
@@ -85,12 +95,29 @@ public class OrganizationController {
         return ResponseEntity.ok(saved);
     }
 
-    // 🔹 Eliminar organización (solo SUPER_ADMIN)
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrganization(@PathVariable Long id) {
-        // … validaciones de rol, etc.
-        organizationService.deleteById(id);
-        return ResponseEntity.noContent().build(); // 204 sin body
+    // 🔹 Activar / Desactivar organización (solo SUPER_ADMIN)
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivateOrganization(@PathVariable Long id) {
+        User current = getAuthenticatedUser();
+
+        if (current.getRole() != Rol.SUPER_ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Solo SUPER_ADMIN puede desactivar organizaciones.");
+        }
+
+        organizationService.deactivateOrganization(id);
+        return ResponseEntity.ok("✅ Organización desactivada.");
+    }
+
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<?> activateOrganization(@PathVariable Long id) {
+        User current = getAuthenticatedUser();
+
+        if (current.getRole() != Rol.SUPER_ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Solo SUPER_ADMIN puede activar organizaciones.");
+        }
+
+        organizationService.activateOrganization(id);
+        return ResponseEntity.ok("✅ Organización activada.");
     }
 
     // 🧩 Helper: obtener usuario autenticado actual
@@ -101,7 +128,7 @@ public class OrganizationController {
         }
 
         String email = auth.getName();
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + email));
     }
 
@@ -129,7 +156,7 @@ public class OrganizationController {
             @RequestBody OrganizationDTO dto) {
 
         User currentUser = getAuthenticatedUser();
-        Organization org = organizationRepository.findById(id)
+        Organization org = organizationRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
 
         // SUPER_ADMIN puede editar cualquier organización

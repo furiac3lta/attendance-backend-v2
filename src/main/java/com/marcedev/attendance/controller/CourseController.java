@@ -33,12 +33,17 @@ public class CourseController {
 
     // ✅ Listar cursos según rol
     @GetMapping
-    public ResponseEntity<?> getAll() {
+    public ResponseEntity<?> getAll(@RequestParam(required = false) Boolean active) {
         User currentUser = getAuthenticatedUser();
+        boolean activeFilter = active != null ? active : true;
 
         return switch (currentUser.getRole()) {
             case SUPER_ADMIN -> ResponseEntity.ok(
-                    courseMapper.toDTOList(courseRepository.findAll())
+                    courseMapper.toDTOList(
+                            activeFilter
+                                    ? courseRepository.findByActiveTrue()
+                                    : courseRepository.findByActiveFalse()
+                    )
             );
 
             case ADMIN -> {
@@ -47,14 +52,20 @@ public class CourseController {
 
                 yield ResponseEntity.ok(
                         courseMapper.toDTOList(
-                                courseRepository.findByOrganizationId(currentUser.getOrganization().getId())
+                                activeFilter
+                                        ? courseRepository.findByOrganizationIdAndActiveTrue(
+                                        currentUser.getOrganization().getId())
+                                        : courseRepository.findByOrganizationIdAndActiveFalse(
+                                        currentUser.getOrganization().getId())
                         )
                 );
             }
 
             case INSTRUCTOR -> ResponseEntity.ok(
                     courseMapper.toDTOList(
-                            courseRepository.findByInstructorId(currentUser.getId())
+                            activeFilter
+                                    ? courseRepository.findByInstructorIdAndActiveTrue(currentUser.getId())
+                                    : courseRepository.findByInstructorIdAndActiveFalse(currentUser.getId())
                     )
             );
 
@@ -144,16 +155,27 @@ public class CourseController {
         return ResponseEntity.ok(result);
     }
 
-    // ✅ Eliminar curso
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    // ✅ Activar / Desactivar curso
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable Long id) {
         User currentUser = getAuthenticatedUser();
 
         if (currentUser.getRole() == Rol.USER)
             return ResponseEntity.status(403).body("🚫 No tiene permisos.");
 
-        courseService.deleteById(id);
-        return ResponseEntity.ok("✅ Curso eliminado.");
+        courseService.deactivateCourse(id);
+        return ResponseEntity.ok("✅ Curso desactivado.");
+    }
+
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<?> activate(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
+
+        if (currentUser.getRole() == Rol.USER)
+            return ResponseEntity.status(403).body("🚫 No tiene permisos.");
+
+        courseService.activateCourse(id);
+        return ResponseEntity.ok("✅ Curso activado.");
     }
 
     // ✅ Inscribir alumno
@@ -192,7 +214,7 @@ public class CourseController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) throw new RuntimeException("Usuario no autenticado");
 
-        return userRepository.findByEmail(auth.getName())
+        return userRepository.findByEmailAndActiveTrue(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 
@@ -214,13 +236,13 @@ public class CourseController {
     @GetMapping("/{courseId}/available-instructors")
     public List<InstructorDTO> getAvailableInstructors(@PathVariable Long courseId) {
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         Long orgId = course.getOrganization().getId();
 
         return userRepository
-                .findByRoleAndOrganizationId(Rol.INSTRUCTOR, orgId)
+                .findByRoleAndOrganizationIdAndActiveTrue(Rol.INSTRUCTOR, orgId)
                 .stream()
                 .map(i -> new InstructorDTO(
                         i.getId(),

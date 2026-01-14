@@ -48,6 +48,11 @@ public class User {
     @Column(nullable = false)
     private Rol role;
 
+    /** Estado del usuario (soft delete) */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
     /** Cursos a los que pertenece el usuario */
     @ManyToMany(fetch = FetchType.EAGER) // ✅ Ahora Angular recibe los cursos
     @JoinTable(

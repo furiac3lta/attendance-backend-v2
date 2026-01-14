@@ -39,10 +39,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public PaymentDTO createPayment(PaymentCreateDTO dto) {
 
-        User student = userRepository.findById(dto.getStudentId())
+        User student = userRepository.findByIdAndActiveTrue(dto.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        Course course = courseRepository.findById(dto.getCourseId())
+        Course course = courseRepository.findByIdAndActiveTrue(dto.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         boolean alreadyPaid =
@@ -139,10 +139,10 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("El alumno ya tiene pago registrado este mes");
         }
 
-        User student = userRepository.findById(request.getStudentId())
+        User student = userRepository.findByIdAndActiveTrue(request.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
-        Course course = courseRepository.findById(request.getCourseId())
+        Course course = courseRepository.findByIdAndActiveTrue(request.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         Payment payment = new Payment();

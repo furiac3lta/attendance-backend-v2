@@ -60,7 +60,7 @@ public class ClassController {
                 return ResponseEntity.status(403).body("🚫 No autorizado para crear clases.");
             }
 
-            var course = courseRepository.findById(dto.getCourseId())
+            var course = courseRepository.findByIdAndActiveTrue(dto.getCourseId())
                     .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
             LocalDate date = LocalDate.parse(dto.getDate());
@@ -139,6 +139,7 @@ public class ClassController {
 
         return ResponseEntity.ok(
                 course.getStudents().stream()
+                        .filter(User::isActive)
                         .map(this::mapStudent)
                         .collect(Collectors.toList())
         );
@@ -159,7 +160,7 @@ public class ClassController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) return false;
 
-        User user = userRepository.findByEmail(auth.getName()).orElse(null);
+        User user = userRepository.findByEmailAndActiveTrue(auth.getName()).orElse(null);
         if (user == null) return false;
         if (user.getRole() == Rol.SUPER_ADMIN) return true;
 
@@ -180,7 +181,7 @@ public class ClassController {
         }
 
         String email = auth.getName();
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new RuntimeException("❌ Usuario no encontrado en BD"));
     }
 

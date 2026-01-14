@@ -26,12 +26,12 @@ public class CourseServiceImpl implements CourseService {
     private final EnrollmentRepository enrollmentRepository;
     @Override
     public List<Course> findAll() {
-        return courseRepository.findAll();
+        return courseRepository.findByActiveTrue();
     }
 
     @Override
     public Optional<Course> findById(Long id) {
-        return courseRepository.findById(id);
+        return courseRepository.findByIdAndActiveTrue(id);
     }
 
     @Override
@@ -39,7 +39,7 @@ public class CourseServiceImpl implements CourseService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
 
-        User instructor = userRepository.findByEmail(email)
+        User instructor = userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new IllegalArgumentException("Instructor no encontrado"));
 
         if (instructor.getOrganization() == null) {
@@ -59,7 +59,7 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public Course update(Long id, Course updatedCourse) {
-        return courseRepository.findById(id)
+        return courseRepository.findByIdAndActiveTrue(id)
                 .map(existing -> {
                     existing.setName(updatedCourse.getName());
                     existing.setDescription(updatedCourse.getDescription());
@@ -70,8 +70,19 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    public void deleteById(Long id) {
-        courseRepository.deleteById(id);
+    public void deactivateCourse(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+        course.setActive(false);
+        courseRepository.save(course);
+    }
+
+    @Override
+    public void activateCourse(Long id) {
+        Course course = courseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+        course.setActive(true);
+        courseRepository.save(course);
     }
 
     /**
@@ -80,11 +91,11 @@ public class CourseServiceImpl implements CourseService {
     @Override
     public Course addStudentToCourse(Long courseId, Long userId) {
         // 🧠 Obtener curso
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new IllegalArgumentException("❌ Curso no encontrado con ID: " + courseId));
 
         // 🧠 Obtener alumno
-        User student = userRepository.findById(userId)
+        User student = userRepository.findByIdAndActiveTrue(userId)
                 .orElseThrow(() -> new IllegalArgumentException("❌ Usuario no encontrado con ID: " + userId));
 
         // 🧱 Validar organización
@@ -118,10 +129,10 @@ public class CourseServiceImpl implements CourseService {
      */
     @Override
     public Course removeStudentFromCourse(Long courseId, Long userId) {
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
 
-        User student = userRepository.findById(userId)
+        User student = userRepository.findByIdAndActiveTrue(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         if (course.getStudents().contains(student)) {
@@ -139,12 +150,12 @@ public class CourseServiceImpl implements CourseService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         // ✅ SUPER_ADMIN ve todos los cursos, sin requerir organización
         if (user.getRole() == Rol.SUPER_ADMIN) {
-            return courseRepository.findAll();
+            return courseRepository.findByActiveTrue();
         }
 
         // ⚠️ Si no tiene organización, no puede ver cursos
@@ -155,17 +166,19 @@ public class CourseServiceImpl implements CourseService {
 
         // ✅ Si es admin → ve todos los cursos de su organización
         if (user.getRole() == Rol.ADMIN) {
-            return courseRepository.findByOrganization(org);
+            return courseRepository.findByOrganizationAndActiveTrue(org);
         }
 
         // ✅ Si es instructor → ve sus propios cursos
         if (user.getRole() == Rol.INSTRUCTOR) {
-            return courseRepository.findByOrganizationAndInstructor(org, user);
+            return courseRepository.findByOrganizationAndInstructorAndActiveTrue(org, user);
         }
 
         // ✅ Si es alumno → devuelve sus cursos inscritos
         if (user.getRole() == Rol.USER) {
-            return user.getCourses().stream().toList();
+            return user.getCourses().stream()
+                    .filter(Course::isActive)
+                    .toList();
         }
 
         return List.of();
@@ -173,10 +186,10 @@ public class CourseServiceImpl implements CourseService {
 
     public void assignInstructor(Long courseId, Long instructorId) {
 
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
-        User instructor = userRepository.findById(instructorId)
+        User instructor = userRepository.findByIdAndActiveTrue(instructorId)
                 .orElseThrow(() -> new RuntimeException("Instructor no encontrado"));
 
         // 🔐 VALIDACIÓN CLAVE

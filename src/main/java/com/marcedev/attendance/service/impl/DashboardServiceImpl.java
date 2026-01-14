@@ -51,7 +51,7 @@ private final EnrollmentRepository enrollmentRepository;
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String email = userDetails.getUsername();
 
-        User admin = userRepository.findByEmail(email)
+        User admin = userRepository.findByEmailAndActiveTrue(email)
                 .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
 
         if (admin.getOrganization() == null) {

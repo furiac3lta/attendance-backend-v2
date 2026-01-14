@@ -35,6 +35,11 @@ public class Course {
     @Column(name = "university_program", length = 50)
     private String universityProgram;
 
+    /** Estado del curso (soft delete) */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
     /** Instructor que creó el curso */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "instructor_id", nullable = false)

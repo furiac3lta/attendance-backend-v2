@@ -13,5 +13,6 @@ public class OrganizationDTO {
     private String address;
     private String logoUrl;
     private String adminFullName; // 👈 agregar este campo
+    private boolean active;
 
 }

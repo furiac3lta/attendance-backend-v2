@@ -18,4 +18,6 @@ public class CourseDTO {
     // 🔹 Nuevos campos de organización
     private Long organizationId;
     private String organizationName;
+
+    private boolean active;
 }

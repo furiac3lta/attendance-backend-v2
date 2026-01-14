@@ -3,6 +3,7 @@ package com.marcedev.attendance.repository;
 import com.marcedev.attendance.entities.Organization;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,4 +18,14 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
 
     // Buscar por nombre (opcional)
     Optional<Organization> findByName(String name);
+
+    Optional<Organization> findByNameIgnoreCase(String name);
+
+    Optional<Organization> findByNameIgnoreCaseAndActiveTrue(String name);
+
+    Optional<Organization> findByIdAndActiveTrue(Long id);
+
+    List<Organization> findByActiveTrue();
+
+    List<Organization> findByActiveFalse();
 }
