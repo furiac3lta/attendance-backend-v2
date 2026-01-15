@@ -86,6 +86,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
         AND MONTH(a.classSession.date) = :month
         AND YEAR(a.classSession.date) = :year
     WHERE c.id = :courseId
+      AND s.active = true
     GROUP BY s.id, s.fullName
     ORDER BY s.fullName
 """)
@@ -144,4 +145,3 @@ long countStudentsWithDebt(Long orgId);
     """)
     long countDistinctStudentsByOrganization(@Param("orgId") Long orgId);
 }
-
