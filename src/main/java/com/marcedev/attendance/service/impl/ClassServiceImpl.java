@@ -109,7 +109,8 @@ public class ClassServiceImpl implements ClassService {
                 classSession.getName(), // esto va en className
                 classSession.getDate(),
                 courseName,
-                course.getId()
+                course.getId(),
+                classSession.getObservations()
         );
 
 

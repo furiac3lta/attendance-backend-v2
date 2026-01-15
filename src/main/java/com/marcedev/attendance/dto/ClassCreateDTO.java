@@ -9,4 +9,5 @@ public class ClassCreateDTO {
     private String name;
     private String date;   // viene como string yyyy-MM-dd desde Angular
     private Long courseId;
+    private String observations;
 }

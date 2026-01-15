@@ -79,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.isActive(),
+                user.getObservations(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
                 user.getCourses() != null ? user.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 user.getOrganization() != null ? user.getOrganization().getId() : null
@@ -131,6 +132,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.isActive(),
+                user.getObservations(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
                 user.getCourses() != null
                         ? user.getCourses().stream().map(c -> c.getName()).toList()

@@ -71,6 +71,7 @@ public class ClassController {
             newClass.setCourse(course);
             newClass.setInstructor(currentUser); // ✅ NECESARIO
             newClass.setOrganization(course.getOrganization()); // ✅ NECESARIO
+            newClass.setObservations(dto.getObservations());
 
             ClassSession saved = classService.create(newClass);
 

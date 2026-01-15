@@ -161,6 +161,10 @@ public class UserServiceImpl implements UserService {
             user.setOrganization(updatedUser.getOrganization());
         }
 
+        if (updatedUser.getObservations() != null) {
+            user.setObservations(updatedUser.getObservations());
+        }
+
         userRepository.save(user);
     }
 
@@ -232,6 +236,10 @@ public class UserServiceImpl implements UserService {
             );
         }
 
+        if (dto.getObservations() != null) {
+            user.setObservations(dto.getObservations());
+        }
+
 
         // Guardamos cambios
         User saved = userRepository.save(user);
@@ -243,6 +251,7 @@ public class UserServiceImpl implements UserService {
                 saved.getEmail(),
                 saved.getRole().name(),
                 saved.isActive(),
+                saved.getObservations(),
                 saved.getOrganization() != null ? saved.getOrganization().getName() : null,
                 saved.getCourses() != null ? saved.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 saved.getOrganization() != null ? saved.getOrganization().getId() : null

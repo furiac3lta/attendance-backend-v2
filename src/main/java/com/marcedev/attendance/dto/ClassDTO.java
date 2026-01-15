@@ -22,4 +22,6 @@ public class ClassDTO {
     // 🔹 Nuevos campos para multi-organización (gimnasio / colegio / instituto)
     private Long organizationId;
     private String organizationName;
+
+    private String observations;
 }

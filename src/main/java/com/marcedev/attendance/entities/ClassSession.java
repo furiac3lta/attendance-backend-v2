@@ -39,4 +39,8 @@ public class ClassSession {
     @JoinColumn(name = "organization_id")
     private Organization organization;
 
+    /** Observaciones libres de la clase */
+    @Column(columnDefinition = "TEXT")
+    private String observations;
+
 }

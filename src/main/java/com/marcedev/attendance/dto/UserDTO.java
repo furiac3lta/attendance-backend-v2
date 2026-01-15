@@ -15,6 +15,7 @@ public class UserDTO {
     private String email;
     private String role;
     private boolean active;
+    private String observations;
 
     private String organizationName; // Ej: "Irmãos Club Puerto Rico"
     private List<String> courses; // Ej: ["BJJ Kids", "BJJ Adultos"]

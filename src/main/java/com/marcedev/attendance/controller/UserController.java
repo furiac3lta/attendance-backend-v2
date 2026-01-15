@@ -2,11 +2,14 @@
 package com.marcedev.attendance.controller;
 
 import com.marcedev.attendance.dto.InstructorDTO;
+import com.marcedev.attendance.dto.UserCreateDTO;
 import com.marcedev.attendance.dto.UserDTO;
 import com.marcedev.attendance.dto.UserImportResultDTO;
+import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.CourseRepository;
+import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final OrganizationRepository organizationRepository;
 
     // ==========================================================
     // ✅ LISTAR USUARIOS (PAGINADO)
@@ -77,6 +81,7 @@ public class UserController {
                 u.getEmail(),
                 u.getRole().name(),
                 u.isActive(),
+                u.getObservations(),
                 u.getOrganization() != null ? u.getOrganization().getName() : null,
                 u.getCourses() != null ? u.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 u.getOrganization() != null ? u.getOrganization().getId() : null
@@ -89,10 +94,25 @@ public class UserController {
     // ✅ CREAR USUARIO
     // ==========================================================
     @PostMapping("/create")
-    public ResponseEntity<?> create(@RequestBody User user) {
+    public ResponseEntity<?> create(@RequestBody UserCreateDTO dto) {
         Rol currentRole = getCurrentUserRole();
         if (currentRole == Rol.INSTRUCTOR || currentRole == Rol.USER)
             return ResponseEntity.status(403).body("🚫 Sin permisos.");
+
+        User user = new User();
+        user.setFullName(dto.getFullName());
+        user.setEmail(dto.getEmail());
+        if (dto.getRole() != null) {
+            user.setRole(Rol.valueOf(dto.getRole()));
+        }
+        user.setPassword(dto.getPassword());
+        user.setObservations(dto.getObservations());
+
+        if (currentRole == Rol.SUPER_ADMIN && dto.getOrganizationId() != null) {
+            Organization organization = organizationRepository.findByIdAndActiveTrue(dto.getOrganizationId())
+                    .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
+            user.setOrganization(organization);
+        }
 
         if (currentRole == Rol.ADMIN) {
             var me = userService.findByEmail(getAuthenticatedEmail()).orElseThrow();

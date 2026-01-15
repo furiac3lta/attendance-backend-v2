@@ -31,4 +31,7 @@ public class ClassDetailsDTO {
 
     /** ✅ ID del curso */
     private Long courseId;
+
+    /** Observaciones libres de la clase */
+    private String observations;
 }

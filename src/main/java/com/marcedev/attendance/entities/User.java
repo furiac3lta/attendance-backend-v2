@@ -53,6 +53,10 @@ public class User {
     @Builder.Default
     private boolean active = true;
 
+    /** Observaciones libres del usuario */
+    @Column(columnDefinition = "TEXT")
+    private String observations;
+
     /** Cursos a los que pertenece el usuario */
     @ManyToMany(fetch = FetchType.EAGER) // ✅ Ahora Angular recibe los cursos
     @JoinTable(
