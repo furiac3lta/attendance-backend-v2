@@ -145,12 +145,14 @@ public class CourseController {
         if (students == null || students.isEmpty())
             return ResponseEntity.ok(List.of());
 
-        var result = students.stream().map(s -> new HashMap<String, Object>() {{
-            put("id", s.getId());
-            put("fullName", s.getFullName());
-            put("email", s.getEmail());
-            put("role", s.getRole().name());
-        }}).toList();
+        var result = students.stream()
+                .filter(User::isActive)
+                .map(s -> new HashMap<String, Object>() {{
+                    put("id", s.getId());
+                    put("fullName", s.getFullName());
+                    put("email", s.getEmail());
+                    put("role", s.getRole().name());
+                }}).toList();
 
         return ResponseEntity.ok(result);
     }

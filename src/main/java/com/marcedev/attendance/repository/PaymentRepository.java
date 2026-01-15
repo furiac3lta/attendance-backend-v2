@@ -32,6 +32,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         WHERE p.course.id = :courseId
           AND p.month = :month
           AND p.year = :year
+          AND p.student.active = true
         ORDER BY p.student.fullName
     """)
     List<Payment> findByCourseMonthYear(
@@ -67,6 +68,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     WHERE p.month = :month
       AND p.year = :year
       AND p.status = 'PAID'
+      AND p.student.active = true
 """)
     long countPaidStudents(
             @Param("month") int month,
@@ -79,6 +81,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     WHERE p.month = :month
       AND p.year = :year
       AND p.status = 'PAID'
+      AND p.student.active = true
 """)
     java.math.BigDecimal sumPaidAmount(
             @Param("month") int month,
@@ -90,6 +93,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     FROM Payment p
     WHERE p.course.organization.id = :organizationId
       AND p.status = 'PAID'
+      AND p.student.active = true
 """)
     BigDecimal sumPaidAmountByOrganization(
             @Param("organizationId") Long organizationId
@@ -101,6 +105,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.year = :year
       AND p.month = :month
       AND p.status = 'PAID'
+      AND p.student.active = true
 """)
     long countPaidStudentsByOrganization(
             @Param("orgId") Long orgId,
@@ -115,6 +120,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.month = :month
       AND p.year = :year
       AND p.course.organization.id = :orgId
+      AND p.student.active = true
 """)
     List<Object[]> findPaidStudents(
             @Param("orgId") Long orgId,
@@ -133,21 +139,22 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         );
 
     @Query("""
-SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
-    u.id,
-    u.fullName,
-    c.name
-)
-FROM Course c
-JOIN c.students u
-WHERE c.organization.id = :orgId
-  AND u.role = 'USER'
-  AND NOT EXISTS (
-      SELECT 1
-      FROM Payment p
-      WHERE p.student = u
-        AND p.course = c
-        AND p.status = 'PAID'
+    SELECT DISTINCT new com.marcedev.attendance.dto.DebtorDTO(
+        u.id,
+        u.fullName,
+        c.name
+    )
+    FROM Course c
+    JOIN c.students u
+    WHERE c.organization.id = :orgId
+      AND u.role = 'USER'
+      AND u.active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM Payment p
+          WHERE p.student = u
+            AND p.course = c
+            AND p.status = 'PAID'
         AND p.month = :month
         AND p.year = :year
   )

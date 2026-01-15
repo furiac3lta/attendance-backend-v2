@@ -119,6 +119,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     from Attendance a
     where a.organization.id = :orgId
       and a.hasDebt = false
+      and a.student.active = true
 """)
     long countStudentsUpToDate(Long orgId);
 
@@ -127,14 +128,16 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     from Attendance a
     where a.organization.id = :orgId
       and a.hasDebt = true
+      and a.student.active = true
 """)
-long countStudentsWithDebt(Long orgId);
+    long countStudentsWithDebt(Long orgId);
 
     @Query("""
         SELECT COUNT(DISTINCT a.student.id)
         FROM Attendance a
         WHERE a.student.organization.id = :orgId
           AND a.hasDebt = true
+          AND a.student.active = true
     """)
     long countStudentsWithDebtByOrganization(@Param("orgId") Long orgId);
 
@@ -142,6 +145,7 @@ long countStudentsWithDebt(Long orgId);
         SELECT COUNT(DISTINCT a.student.id)
         FROM Attendance a
         WHERE a.student.organization.id = :orgId
+          AND a.student.active = true
     """)
     long countDistinctStudentsByOrganization(@Param("orgId") Long orgId);
 }

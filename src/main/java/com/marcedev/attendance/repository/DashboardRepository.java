@@ -20,8 +20,10 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT COUNT(*)
         FROM enrollments e
         JOIN courses c ON e.course_id = c.id
+        JOIN users u ON e.user_id = u.id
         WHERE c.organization_id = :organizationId
           AND e.active = true
+          AND u.active = true
         """, nativeQuery = true)
     long countActiveStudents(@Param("organizationId") Long organizationId);
 
@@ -29,8 +31,10 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT c.name, COUNT(*)
         FROM enrollments e
         JOIN courses c ON e.course_id = c.id
+        JOIN users u ON e.user_id = u.id
         WHERE c.organization_id = :organizationId
           AND e.active = true
+          AND u.active = true
         GROUP BY c.name
         """, nativeQuery = true)
     List<Object[]> countStudentsByCourse(@Param("organizationId") Long organizationId);
@@ -41,10 +45,12 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT COUNT(DISTINCT p.student_id)
         FROM payments p
         JOIN courses c ON p.course_id = c.id
+        JOIN users u ON p.student_id = u.id
         WHERE c.organization_id = :organizationId
           AND p.year = :year
           AND p.month = :month
           AND p.status = 'PAID'
+          AND u.active = true
         """, nativeQuery = true)
     long countPaidStudents(
             @Param("organizationId") Long organizationId,
@@ -56,8 +62,10 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT COUNT(DISTINCT e.user_id)
         FROM enrollments e
         JOIN courses c ON e.course_id = c.id
+        JOIN users u ON e.user_id = u.id
         WHERE c.organization_id = :organizationId
           AND e.active = true
+          AND u.active = true
           AND e.user_id NOT IN (
               SELECT p.student_id
               FROM payments p
@@ -78,10 +86,12 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT COALESCE(SUM(p.amount), 0)
         FROM payments p
         JOIN courses c ON p.course_id = c.id
+        JOIN users u ON p.student_id = u.id
         WHERE c.organization_id = :organizationId
           AND p.year = :year
           AND p.month = :month
           AND p.status = 'PAID'
+          AND u.active = true
         """, nativeQuery = true)
     BigDecimal totalRevenue(
             @Param("organizationId") Long organizationId,
@@ -93,10 +103,12 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT c.name, COALESCE(SUM(p.amount), 0)
         FROM payments p
         JOIN courses c ON p.course_id = c.id
+        JOIN users u ON p.student_id = u.id
         WHERE c.organization_id = :organizationId
           AND p.year = :year
           AND p.month = :month
           AND p.status = 'PAID'
+          AND u.active = true
         GROUP BY c.name
         """, nativeQuery = true)
     List<Object[]> revenueByCourse(
@@ -111,11 +123,13 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         SELECT COALESCE(SUM(p.amount), 0)
         FROM payments p
         JOIN courses c ON p.course_id = c.id
+        JOIN users u ON p.student_id = u.id
         WHERE c.organization_id = :organizationId
           AND p.year = :year
           AND p.month = :month
           AND p.status = 'PAID'
           AND p.method = :method
+          AND u.active = true
         """, nativeQuery = true)
     BigDecimal revenueByPaymentMethod(
             @Param("organizationId") Long organizationId,
@@ -134,6 +148,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
     JOIN e.course c
     WHERE c.organization.id = :orgId
       AND e.active = true
+      AND u.active = true
       AND NOT EXISTS (
           SELECT 1
           FROM Payment p
