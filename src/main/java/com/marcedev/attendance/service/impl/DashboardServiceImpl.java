@@ -64,7 +64,7 @@ private final EnrollmentRepository enrollmentRepository;
 
         // ================= ALUMNOS =================
         long totalStudents =
-                attendanceRepository.countDistinctStudentsByOrganization(organizationId);
+                userRepository.countActiveStudentsByOrganization(organizationId);
 
         long paidStudents =
                 paymentRepository.countPaidStudentsByOrganization(
@@ -153,7 +153,7 @@ private final EnrollmentRepository enrollmentRepository;
         int month = now.getMonthValue();
 
         long activeStudents =
-                attendanceRepository.countDistinctStudentsByOrganization(orgId);
+                userRepository.countActiveStudentsByOrganization(orgId);
 
         long paidStudents =
                 paymentRepository.countPaidStudentsByOrganization(

@@ -33,6 +33,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
           AND p.month = :month
           AND p.year = :year
           AND p.student.active = true
+          AND p.student.role = com.marcedev.attendance.enums.Rol.USER
         ORDER BY p.student.fullName
     """)
     List<Payment> findByCourseMonthYear(
@@ -69,6 +70,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.year = :year
       AND p.status = 'PAID'
       AND p.student.active = true
+      AND p.student.role = com.marcedev.attendance.enums.Rol.USER
 """)
     long countPaidStudents(
             @Param("month") int month,
@@ -82,6 +84,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.year = :year
       AND p.status = 'PAID'
       AND p.student.active = true
+      AND p.student.role = com.marcedev.attendance.enums.Rol.USER
 """)
     java.math.BigDecimal sumPaidAmount(
             @Param("month") int month,
@@ -94,6 +97,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     WHERE p.course.organization.id = :organizationId
       AND p.status = 'PAID'
       AND p.student.active = true
+      AND p.student.role = com.marcedev.attendance.enums.Rol.USER
 """)
     BigDecimal sumPaidAmountByOrganization(
             @Param("organizationId") Long organizationId
@@ -106,6 +110,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.month = :month
       AND p.status = 'PAID'
       AND p.student.active = true
+      AND p.student.role = com.marcedev.attendance.enums.Rol.USER
 """)
     long countPaidStudentsByOrganization(
             @Param("orgId") Long orgId,
@@ -121,6 +126,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
       AND p.year = :year
       AND p.course.organization.id = :orgId
       AND p.student.active = true
+      AND p.student.role = com.marcedev.attendance.enums.Rol.USER
 """)
     List<Object[]> findPaidStudents(
             @Param("orgId") Long orgId,

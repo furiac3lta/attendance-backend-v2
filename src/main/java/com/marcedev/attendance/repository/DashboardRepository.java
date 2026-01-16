@@ -24,6 +24,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         WHERE c.organization_id = :organizationId
           AND e.active = true
           AND u.active = true
+          AND u.role = 'USER'
         """, nativeQuery = true)
     long countActiveStudents(@Param("organizationId") Long organizationId);
 
@@ -35,6 +36,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         WHERE c.organization_id = :organizationId
           AND e.active = true
           AND u.active = true
+          AND u.role = 'USER'
         GROUP BY c.name
         """, nativeQuery = true)
     List<Object[]> countStudentsByCourse(@Param("organizationId") Long organizationId);
@@ -51,6 +53,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
           AND p.month = :month
           AND p.status = 'PAID'
           AND u.active = true
+          AND u.role = 'USER'
         """, nativeQuery = true)
     long countPaidStudents(
             @Param("organizationId") Long organizationId,
@@ -66,6 +69,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
         WHERE c.organization_id = :organizationId
           AND e.active = true
           AND u.active = true
+          AND u.role = 'USER'
           AND e.user_id NOT IN (
               SELECT p.student_id
               FROM payments p
@@ -92,6 +96,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
           AND p.month = :month
           AND p.status = 'PAID'
           AND u.active = true
+          AND u.role = 'USER'
         """, nativeQuery = true)
     BigDecimal totalRevenue(
             @Param("organizationId") Long organizationId,
@@ -109,6 +114,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
           AND p.month = :month
           AND p.status = 'PAID'
           AND u.active = true
+          AND u.role = 'USER'
         GROUP BY c.name
         """, nativeQuery = true)
     List<Object[]> revenueByCourse(
@@ -130,6 +136,7 @@ public interface DashboardRepository extends JpaRepository<Enrollment, Long> {
           AND p.status = 'PAID'
           AND p.method = :method
           AND u.active = true
+          AND u.role = 'USER'
         """, nativeQuery = true)
     BigDecimal revenueByPaymentMethod(
             @Param("organizationId") Long organizationId,
