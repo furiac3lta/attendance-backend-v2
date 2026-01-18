@@ -186,7 +186,7 @@ public class ClassController {
     public ResponseEntity<?> generateQr(@PathVariable Long classId) {
         User currentUser = getAuthenticatedUser();
 
-        if (currentUser.getRole() == Rol.USER || currentUser.getRole() == Rol.ADMIN) {
+        if (currentUser.getRole() == Rol.USER) {
             return ResponseEntity.status(403).body("🚫 Sin permisos.");
         }
 

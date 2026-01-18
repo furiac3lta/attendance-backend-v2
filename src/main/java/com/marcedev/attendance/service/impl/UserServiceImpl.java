@@ -391,6 +391,10 @@ public class UserServiceImpl implements UserService {
             return result;
         }
 
+        if (currentRole == Rol.ADMIN && currentUser.getOrganization() != null) {
+            planAccessService.requirePro(currentUser.getOrganization(), "Importar usuarios desde Excel");
+        }
+
         List<ImportRow> rows;
         try {
             rows = readImportRows(file);
@@ -451,6 +455,16 @@ public class UserServiceImpl implements UserService {
             Organization organization = resolveOrganization(currentRole, defaultOrg, orgRaw);
             if (currentRole == Rol.SUPER_ADMIN && orgRaw != null && organization == null) {
                 result.getErrors().add(formatRowError(row.rowNumber, "Organización no encontrada: " + orgRaw));
+                result.setSkipped(result.getSkipped() + 1);
+                continue;
+            }
+            if (currentRole == Rol.SUPER_ADMIN && organization == null) {
+                result.getErrors().add(formatRowError(row.rowNumber, "Debe indicar una organización para importar."));
+                result.setSkipped(result.getSkipped() + 1);
+                continue;
+            }
+            if (organization != null && !organization.isProPlan()) {
+                result.getErrors().add(formatRowError(row.rowNumber, "Plan PRO requerido para importar usuarios."));
                 result.setSkipped(result.getSkipped() + 1);
                 continue;
             }
