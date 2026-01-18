@@ -1,0 +1,10 @@
+ALTER TABLE organizations
+  ADD COLUMN pro_plan BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE classes
+  ADD COLUMN qr_enabled BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN qr_token VARCHAR(128) NULL,
+  ADD COLUMN qr_expires_at DATETIME NULL;
+
+ALTER TABLE attendances
+  ADD COLUMN via_qr BOOLEAN NOT NULL DEFAULT false;

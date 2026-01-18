@@ -71,6 +71,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // ---------- ASISTENCIA ----------
+                        .requestMatchers(HttpMethod.POST, "/api/attendance/class/*/qr")
+                        .hasAnyRole("USER")
                         .requestMatchers(HttpMethod.GET, "/api/attendance/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/attendance/**")
@@ -93,6 +95,8 @@ public class SecurityConfig {
                         .hasAnyRole("SUPER_ADMIN", "ADMIN")
 
                         // ---------- USUARIOS ----------
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/history")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR", "USER")
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN")
 

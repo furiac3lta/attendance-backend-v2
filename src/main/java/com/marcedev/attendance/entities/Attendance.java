@@ -69,4 +69,8 @@ public class Attendance {
     @Column(nullable = false)
     private boolean hasDebt = false;
 
+    /** Asistencia registrada vía QR */
+    @Column(nullable = false)
+    private boolean viaQr = false;
+
 }

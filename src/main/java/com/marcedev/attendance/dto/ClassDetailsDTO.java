@@ -34,4 +34,7 @@ public class ClassDetailsDTO {
 
     /** Observaciones libres de la clase */
     private String observations;
+
+    /** QR habilitado */
+    private boolean qrEnabled;
 }

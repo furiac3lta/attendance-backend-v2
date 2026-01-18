@@ -34,6 +34,11 @@ public class Organization {
     @Builder.Default
     private boolean active = true;
 
+    /** Plan PRO habilitado */
+    @Column(name = "pro_plan", nullable = false)
+    @Builder.Default
+    private boolean proPlan = false;
+
     /** Admin principal de la organización */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "admin_id")

@@ -24,8 +24,14 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     /** 🔹 Buscar asistencias por ID de curso */
     List<Attendance> findByCourseId(Long courseId);
 
+    @Query("SELECT a FROM Attendance a WHERE a.course.id = :courseId AND a.classSession.date >= :since")
+    List<Attendance> findByCourseIdSince(@Param("courseId") Long courseId,
+                                         @Param("since") java.time.LocalDate since);
+
     /** 🔹 Buscar asistencias por ID de alumno */
     List<Attendance> findByStudentId(Long studentId);
+
+    List<Attendance> findByStudentIdOrderByTakenAtDesc(Long studentId);
 
     /**
      * 🔹 Buscar asistencias por ID de organización (para los ADMIN)

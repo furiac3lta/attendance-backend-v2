@@ -12,6 +12,7 @@ import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.*;
 import com.marcedev.attendance.service.DashboardService;
 import com.marcedev.attendance.service.PaymentService;
+import com.marcedev.attendance.service.PlanAccessService;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -37,6 +38,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final PaymentService paymentService; // ✅ USAR ESTE
+    private final PlanAccessService planAccessService;
 private final CourseRepository courseRepository;
 private final EnrollmentRepository enrollmentRepository;
     // =====================================================
@@ -57,6 +59,8 @@ private final EnrollmentRepository enrollmentRepository;
         if (admin.getOrganization() == null) {
             throw new RuntimeException("El usuario no tiene organización asignada");
         }
+
+        planAccessService.requirePro(admin.getOrganization(), "Reportes");
 
         Long organizationId = admin.getOrganization().getId();
         int year = month.getYear();
@@ -145,6 +149,8 @@ private final EnrollmentRepository enrollmentRepository;
             throw new RuntimeException("El admin no tiene organización asignada");
         }
 
+        planAccessService.requirePro(org, "Dashboard");
+
         String organizationName = org.getName();
         Long orgId = org.getId();
 
@@ -183,6 +189,9 @@ private final EnrollmentRepository enrollmentRepository;
     public List<DebtorDTO> getDebtors() {
 
         User admin = userService.getAuthenticatedUser();
+        if (admin.getOrganization() != null) {
+            planAccessService.requirePro(admin.getOrganization(), "Reportes");
+        }
 
         YearMonth now = YearMonth.now();
 

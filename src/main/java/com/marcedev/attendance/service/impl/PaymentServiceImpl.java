@@ -13,6 +13,7 @@ import com.marcedev.attendance.repository.CourseRepository;
 import com.marcedev.attendance.repository.EnrollmentRepository;
 import com.marcedev.attendance.repository.PaymentRepository;
 import com.marcedev.attendance.repository.UserRepository;
+import com.marcedev.attendance.service.PlanAccessService;
 import com.marcedev.attendance.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final PlanAccessService planAccessService;
 
     // ======================================================
     // 💰 CREATE PAYMENT
@@ -44,6 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Course course = courseRepository.findByIdAndActiveTrue(dto.getCourseId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        planAccessService.requirePro(course.getOrganization(), "Pagos");
 
         boolean alreadyPaid =
                 paymentRepository.existsByStudentIdAndCourseIdAndMonthAndYearAndStatus(
@@ -82,6 +85,9 @@ public class PaymentServiceImpl implements PaymentService {
     // ======================================================
     @Override
     public List<PaymentDTO> listByCourse(Long courseId, int month, int year) {
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        planAccessService.requirePro(course.getOrganization(), "Pagos");
         return paymentRepository.findByCourseMonthYear(courseId, month, year)
                 .stream()
                 .map(this::toDTO)
@@ -90,6 +96,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentDTO> listByStudent(Long studentId) {
+        User student = userRepository.findByIdAndActiveTrue(studentId)
+                .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
+        planAccessService.requirePro(student.getOrganization(), "Pagos");
         return paymentRepository.findByStudent(studentId)
                 .stream()
                 .map(this::toDTO)
@@ -102,6 +111,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public Map<Long, Boolean> getPaymentStatusByCourse(Long courseId, int month, int year) {
 
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        planAccessService.requirePro(course.getOrganization(), "Pagos");
         List<User> students = userRepository.findStudentsByCourseId(courseId);
         Map<Long, Boolean> result = new HashMap<>();
 
@@ -131,6 +143,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void registerPayment(PaymentCreateRequest request) {
 
+        Course course = courseRepository.findByIdAndActiveTrue(request.getCourseId())
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        planAccessService.requirePro(course.getOrganization(), "Pagos");
         if (paymentRepository.existsByStudentIdAndMonthAndYear(
                 request.getStudentId(),
                 request.getMonth(),
@@ -141,9 +156,6 @@ public class PaymentServiceImpl implements PaymentService {
 
         User student = userRepository.findByIdAndActiveTrue(request.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
-
-        Course course = courseRepository.findByIdAndActiveTrue(request.getCourseId())
-                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
         Payment payment = new Payment();
         payment.setStudent(student);

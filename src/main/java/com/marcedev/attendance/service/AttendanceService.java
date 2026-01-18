@@ -14,6 +14,8 @@ public interface AttendanceService {
 
     void registerAttendance(Long sessionId, List<AttendanceMarkDTO> attendances);
 
+    void registerAttendanceViaQr(Long sessionId, String token);
+
     void registerAttendanceByCourse(Long courseId, Map<Long, Boolean> attendanceMap);
 
     List<AttendanceDTO> findAll();

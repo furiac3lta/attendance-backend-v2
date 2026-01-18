@@ -2,15 +2,17 @@
 package com.marcedev.attendance.controller;
 
 import com.marcedev.attendance.dto.InstructorDTO;
-import com.marcedev.attendance.dto.UserCreateDTO;
-import com.marcedev.attendance.dto.UserDTO;
-import com.marcedev.attendance.dto.UserImportResultDTO;
+import com.marcedev.attendance.dto.*;
 import com.marcedev.attendance.entities.Organization;
 import com.marcedev.attendance.entities.User;
 import com.marcedev.attendance.enums.Rol;
+import com.marcedev.attendance.mapper.AttendanceMapper;
+import com.marcedev.attendance.repository.AttendanceRepository;
 import com.marcedev.attendance.repository.CourseRepository;
+import com.marcedev.attendance.repository.EnrollmentRepository;
 import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
+import com.marcedev.attendance.service.PaymentService;
 import com.marcedev.attendance.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +36,10 @@ public class UserController {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final OrganizationRepository organizationRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final AttendanceMapper attendanceMapper;
+    private final PaymentService paymentService;
+    private final EnrollmentRepository enrollmentRepository;
 
     // ==========================================================
     // ✅ LISTAR USUARIOS (PAGINADO)
@@ -81,8 +87,11 @@ public class UserController {
                 u.getEmail(),
                 u.getRole().name(),
                 u.isActive(),
-                u.getObservations(),
+                (u.getOrganization() != null && !u.getOrganization().isProPlan())
+                        ? null
+                        : u.getObservations(),
                 u.getOrganization() != null ? u.getOrganization().getName() : null,
+                u.getOrganization() != null ? u.getOrganization().isProPlan() : false,
                 u.getCourses() != null ? u.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 u.getOrganization() != null ? u.getOrganization().getId() : null
         ));
@@ -124,6 +133,66 @@ public class UserController {
     }
 
     // ==========================================================
+    // 📊 HISTORIAL DEL ALUMNO
+    // ==========================================================
+    @GetMapping("/{id}/history")
+    public ResponseEntity<?> getStudentHistory(@PathVariable Long id) {
+        User currentUser = userService.getAuthenticatedUser();
+
+        User target = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (currentUser.getRole() == Rol.USER) {
+            if (!currentUser.getId().equals(id)) {
+                return ResponseEntity.status(403).body("🚫 No autorizado.");
+            }
+            target = currentUser;
+        } else if (currentUser.getRole() == Rol.ADMIN || currentUser.getRole() == Rol.INSTRUCTOR) {
+            if (currentUser.getOrganization() == null
+                    || target.getOrganization() == null
+                    || !currentUser.getOrganization().getId().equals(target.getOrganization().getId())) {
+                return ResponseEntity.status(403).body("🚫 No autorizado.");
+            }
+        }
+
+        if (target.getRole() != Rol.USER) {
+            return ResponseEntity.badRequest().body("⚠️ El historial solo aplica a alumnos.");
+        }
+
+        if (target.getOrganization() != null && !target.getOrganization().isProPlan()) {
+            return ResponseEntity.status(403).body("🚫 Funcionalidad disponible solo en plan PRO.");
+        }
+
+        var courses = enrollmentRepository.findByUserIdAndActiveTrue(id).stream()
+                .map(e -> new CourseSummaryDTO(
+                        e.getCourse().getId(),
+                        e.getCourse().getName(),
+                        e.getCourse().getOrganization() != null ? e.getCourse().getOrganization().getName() : null,
+                        e.getCourse().isActive()
+                ))
+                .toList();
+
+        var attendances = attendanceRepository.findByStudentIdOrderByTakenAtDesc(id).stream()
+                .map(attendanceMapper::toDTO)
+                .toList();
+
+        var payments = paymentService.listByStudent(id);
+
+        StudentHistoryDTO history = new StudentHistoryDTO(
+                target.getId(),
+                target.getFullName(),
+                target.getEmail(),
+                target.getObservations(),
+                target.getOrganization() != null ? target.getOrganization().getName() : null,
+                courses,
+                attendances,
+                payments
+        );
+
+        return ResponseEntity.ok(history);
+    }
+
+    // ==========================================================
     // 📥 IMPORTAR USUARIOS DESDE EXCEL/CSV
     // ==========================================================
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -147,6 +216,23 @@ public class UserController {
     ) {
         UserDTO updated = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updated);
+    }
+
+    // ==========================================================
+    // 🔒 CAMBIO DE CONTRASEÑA (ADMIN / SUPER_ADMIN)
+    // ==========================================================
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> updatePassword(
+            @PathVariable Long id,
+            @RequestBody PasswordUpdateDTO dto
+    ) {
+        Rol role = getCurrentUserRole();
+        if (role != Rol.SUPER_ADMIN && role != Rol.ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Sin permisos.");
+        }
+
+        userService.changePassword(id, dto.getNewPassword());
+        return ResponseEntity.ok("✅ Contraseña actualizada.");
     }
 
     // ==========================================================

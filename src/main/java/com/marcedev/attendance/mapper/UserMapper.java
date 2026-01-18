@@ -15,6 +15,8 @@ public interface UserMapper {
 
     @Mapping(target = "organizationName",
             expression = "java(user.getOrganization() != null ? user.getOrganization().getName() : null)")
+    @Mapping(target = "organizationProPlan",
+            expression = "java(user.getOrganization() != null ? user.getOrganization().isProPlan() : false)")
     @Mapping(target = "organizationId",
             expression = "java(user.getOrganization() != null ? user.getOrganization().getId() : null)")
     @Mapping(target = "courses", expression = "java(mapCourses(user.getCourses()))")

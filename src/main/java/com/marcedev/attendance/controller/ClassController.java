@@ -3,6 +3,7 @@ package com.marcedev.attendance.controller;
 import com.marcedev.attendance.dto.AttendanceMarkDTO;
 import com.marcedev.attendance.dto.ClassCreateDTO;
 import com.marcedev.attendance.dto.ClassDetailsDTO;
+import com.marcedev.attendance.dto.QrCodeDTO;
 import com.marcedev.attendance.entities.ClassSession;
 import com.marcedev.attendance.entities.Course;
 import com.marcedev.attendance.entities.User;
@@ -12,6 +13,7 @@ import com.marcedev.attendance.repository.CourseRepository;
 import com.marcedev.attendance.repository.UserRepository;
 import com.marcedev.attendance.service.AttendanceService;
 import com.marcedev.attendance.service.ClassService;
+import com.marcedev.attendance.service.QrCodeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,8 +21,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/classes")
@@ -32,6 +37,7 @@ public class ClassController {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final ClassSessionRepository classSessionRepository;
+    private final QrCodeService qrCodeService;
 
     // ✅ Obtener o crear la clase del día (para tomar asistencia)
     @GetMapping("/today/{courseId}")
@@ -173,6 +179,53 @@ public class ClassController {
         Long courseId = body.get("courseId");
         ClassSession session = classService.getOrCreateTodaySession(courseId);
         return ResponseEntity.ok(session);
+    }
+
+    // ✅ Generar QR para una clase (solo plan PRO)
+    @PostMapping("/{classId}/qr")
+    public ResponseEntity<?> generateQr(@PathVariable Long classId) {
+        User currentUser = getAuthenticatedUser();
+
+        if (currentUser.getRole() == Rol.USER || currentUser.getRole() == Rol.ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Sin permisos.");
+        }
+
+        ClassSession session = classSessionRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
+
+        if (session.getCourse() == null || session.getCourse().getOrganization() == null
+                || !session.getCourse().getOrganization().isProPlan()) {
+            return ResponseEntity.status(403).body("🚫 Funcionalidad disponible solo en plan PRO.");
+        }
+
+        if (!LocalDate.now().equals(session.getDate())) {
+            return ResponseEntity.status(400).body("⚠️ El QR solo puede generarse el día de la clase.");
+        }
+
+        if (currentUser.getRole() == Rol.INSTRUCTOR) {
+            if (session.getInstructor() == null
+                    || !session.getInstructor().getId().equals(currentUser.getId())) {
+                return ResponseEntity.status(403).body("🚫 Solo el instructor de la clase puede generar el QR.");
+            }
+        }
+
+        String token = UUID.randomUUID().toString().replace("-", "");
+        LocalDateTime expiresAt = LocalDate.now().atTime(LocalTime.MAX);
+        String payload = "ATTENDANCE:CLASS:" + session.getId() + ":TOKEN:" + token;
+
+        session.setQrEnabled(true);
+        session.setQrToken(token);
+        session.setQrExpiresAt(expiresAt);
+        classSessionRepository.save(session);
+
+        String base64 = qrCodeService.generateBase64Png(payload, 320);
+
+        return ResponseEntity.ok(new QrCodeDTO(
+                session.getId(),
+                payload,
+                "data:image/png;base64," + base64,
+                expiresAt
+        ));
     }
     // ✅ Obtener usuario autenticado
     private User getAuthenticatedUser() {

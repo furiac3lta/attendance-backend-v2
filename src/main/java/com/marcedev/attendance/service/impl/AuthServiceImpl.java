@@ -81,6 +81,7 @@ public class AuthServiceImpl implements AuthService {
                 user.isActive(),
                 user.getObservations(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
+                user.getOrganization() != null ? user.getOrganization().isProPlan() : false,
                 user.getCourses() != null ? user.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 user.getOrganization() != null ? user.getOrganization().getId() : null
         );
@@ -109,13 +110,6 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         // ======================================================
-        // 🔒 BLOQUEO DE USUARIOS COMUNES
-        // ======================================================
-        if (user.getRole() == Rol.USER) {
-            throw new RuntimeException("Este usuario no tiene permisos para acceder al sistema");
-        }
-
-        // ======================================================
         // ✅ TOKEN
         // ======================================================
         String token = jwtService.generateToken(
@@ -134,6 +128,7 @@ public class AuthServiceImpl implements AuthService {
                 user.isActive(),
                 user.getObservations(),
                 user.getOrganization() != null ? user.getOrganization().getName() : null,
+                user.getOrganization() != null ? user.getOrganization().isProPlan() : false,
                 user.getCourses() != null
                         ? user.getCourses().stream().map(c -> c.getName()).toList()
                         : List.of(),

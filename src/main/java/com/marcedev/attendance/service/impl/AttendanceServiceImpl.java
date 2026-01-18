@@ -7,6 +7,7 @@ import com.marcedev.attendance.mapper.AttendanceMapper;
 import com.marcedev.attendance.repository.*;
 import com.marcedev.attendance.service.AttendanceService;
 import com.marcedev.attendance.service.PaymentService;
+import com.marcedev.attendance.service.PlanAccessService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final AttendanceMapper attendanceMapper;
     private final CourseRepository courseRepository;
     private final PaymentService paymentService;
+    private final PlanAccessService planAccessService;
 
     // =========================================================
     // 🔐 AUTH
@@ -125,7 +127,20 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public List<AttendanceDTO> findByCourseId(Long courseId) {
-        return attendanceRepository.findByCourseId(courseId)
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+
+        List<Attendance> attendances;
+        if (!planAccessService.isProPlan(course.getOrganization())) {
+            attendances = attendanceRepository.findByCourseIdSince(
+                    courseId,
+                    planAccessService.freeHistoryStartDate()
+            );
+        } else {
+            attendances = attendanceRepository.findByCourseId(courseId);
+        }
+
+        return attendances
                 .stream()
                 .map(attendanceMapper::toDTO)
                 .toList();
@@ -159,6 +174,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         ClassSession session = classSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
+        if (session.isQrEnabled()) {
+            throw new RuntimeException("La asistencia manual está deshabilitada para esta clase.");
+        }
+
         Course course = session.getCourse();
         Organization org = session.getOrganization();
 
@@ -184,6 +203,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             attendance.setHasDebt(!upToDate);
             attendance.setTakenBy(currentUser);
             attendance.setTakenAt(LocalDateTime.now());
+            attendance.setViaQr(false);
 
             attendanceRepository.save(attendance);
         }
@@ -196,7 +216,74 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public List<CourseMonthlyAttendanceDTO> getCourseMonthlyStats(
             Long courseId, int month, int year) {
+        Course course = courseRepository.findByIdAndActiveTrue(courseId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        planAccessService.requirePro(course.getOrganization(), "Reportes");
         return attendanceRepository.getMonthlyCourseStats(courseId, month, year);
+    }
+
+    @Override
+    @Transactional
+    public void registerAttendanceViaQr(Long sessionId, String token) {
+        ClassSession session = classSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
+
+        if (!session.isQrEnabled()) {
+            throw new RuntimeException("QR no habilitado para esta clase");
+        }
+
+        if (session.getCourse() == null || session.getCourse().getOrganization() == null
+                || !session.getCourse().getOrganization().isProPlan()) {
+            throw new RuntimeException("Funcionalidad disponible solo en plan PRO");
+        }
+
+        if (session.getQrToken() == null || !session.getQrToken().equals(token)) {
+            throw new RuntimeException("QR inválido");
+        }
+
+        if (session.getQrExpiresAt() == null || session.getQrExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("QR expirado");
+        }
+
+        if (!session.getDate().equals(LocalDate.now())) {
+            throw new RuntimeException("QR inválido para esta fecha");
+        }
+
+        User student = getAuthenticatedUser();
+        if (student.getRole() != Rol.USER) {
+            throw new RuntimeException("Solo alumnos pueden usar QR");
+        }
+
+        Course course = session.getCourse();
+        if (course == null) {
+            throw new RuntimeException("Curso no encontrado");
+        }
+
+        boolean enrolled = course.getStudents() != null
+                && course.getStudents().stream().anyMatch(u -> u.getId().equals(student.getId()));
+        if (!enrolled) {
+            throw new RuntimeException("El alumno no pertenece a esta clase");
+        }
+
+        if (attendanceRepository.findByStudentIdAndClassSessionId(student.getId(), sessionId).isPresent()) {
+            throw new RuntimeException("Asistencia ya registrada");
+        }
+
+        boolean upToDate = paymentService.isStudentUpToDate(student.getId(), course.getId());
+
+        Attendance attendance = Attendance.builder()
+                .classSession(session)
+                .student(student)
+                .course(course)
+                .organization(session.getOrganization())
+                .attended(true)
+                .hasDebt(!upToDate)
+                .takenBy(student)
+                .takenAt(LocalDateTime.now())
+                .viaQr(true)
+                .build();
+
+        attendanceRepository.save(attendance);
     }
 
     // =========================================================

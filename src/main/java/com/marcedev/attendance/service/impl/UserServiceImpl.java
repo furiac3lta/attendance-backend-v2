@@ -10,6 +10,7 @@ import com.marcedev.attendance.enums.Rol;
 import com.marcedev.attendance.repository.CourseRepository;
 import com.marcedev.attendance.repository.OrganizationRepository;
 import com.marcedev.attendance.repository.UserRepository;
+import com.marcedev.attendance.service.PlanAccessService;
 import com.marcedev.attendance.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class UserServiceImpl implements UserService {
     private final OrganizationRepository organizationRepository;
     private final CourseRepository courseRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PlanAccessService planAccessService;
 
     private static final int GENERATED_PASSWORD_LENGTH = 8;
     private static final String PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -109,6 +111,21 @@ public class UserServiceImpl implements UserService {
             });
         }
 
+        Organization org = user.getOrganization();
+        if (org != null && user.getId() == null) {
+            if (user.getRole() == Rol.USER && user.isActive()) {
+                planAccessService.validateActiveStudentLimit(org, true);
+            }
+            if (user.getRole() == Rol.INSTRUCTOR && user.isActive()) {
+                planAccessService.validateInstructorLimit(org, true);
+            }
+            if (!org.isProPlan()
+                    && user.getObservations() != null
+                    && !user.getObservations().isBlank()) {
+                planAccessService.requirePro(org, "Observaciones");
+            }
+        }
+
         return userRepository.save(user);
     }
 
@@ -150,6 +167,19 @@ public class UserServiceImpl implements UserService {
         }
 
         if (updatedUser.getRole() != null) {
+            Organization targetOrg = updatedUser.getOrganization() != null
+                    ? updatedUser.getOrganization()
+                    : user.getOrganization();
+            if (updatedUser.getRole() == Rol.INSTRUCTOR
+                    && targetOrg != null
+                    && (user.getRole() != Rol.INSTRUCTOR || !user.isActive())) {
+                planAccessService.validateInstructorLimit(targetOrg, true);
+            }
+            if (updatedUser.getRole() == Rol.USER
+                    && targetOrg != null
+                    && (user.getRole() != Rol.USER || !user.isActive())) {
+                planAccessService.validateActiveStudentLimit(targetOrg, true);
+            }
             user.setRole(updatedUser.getRole());
         }
 
@@ -162,6 +192,14 @@ public class UserServiceImpl implements UserService {
         }
 
         if (updatedUser.getObservations() != null) {
+            Organization obsOrg = updatedUser.getOrganization() != null
+                    ? updatedUser.getOrganization()
+                    : user.getOrganization();
+            if (obsOrg != null
+                    && !obsOrg.isProPlan()
+                    && !updatedUser.getObservations().isBlank()) {
+                planAccessService.requirePro(obsOrg, "Observaciones");
+            }
             user.setObservations(updatedUser.getObservations());
         }
 
@@ -227,16 +265,34 @@ public class UserServiceImpl implements UserService {
         // 🔥 Actualizamos solo los campos editables
         user.setFullName(dto.getFullName());
         user.setEmail(dto.getEmail());
-        user.setRole(Rol.valueOf(dto.getRole()));
+        Rol newRole = Rol.valueOf(dto.getRole());
+        Organization targetOrg = user.getOrganization();
+        if (dto.getOrganizationId() != null) {
+            targetOrg = organizationRepository.findByIdAndActiveTrue(dto.getOrganizationId())
+                    .orElseThrow(() -> new RuntimeException("Organización no encontrada"));
+        }
+        if (newRole == Rol.INSTRUCTOR
+                && targetOrg != null
+                && (user.getRole() != Rol.INSTRUCTOR || !user.isActive())) {
+            planAccessService.validateInstructorLimit(targetOrg, true);
+        }
+        if (newRole == Rol.USER
+                && targetOrg != null
+                && (user.getRole() != Rol.USER || !user.isActive())) {
+            planAccessService.validateActiveStudentLimit(targetOrg, true);
+        }
+        user.setRole(newRole);
 
         if (dto.getOrganizationId() != null) {
-            user.setOrganization(
-                    organizationRepository.findByIdAndActiveTrue(dto.getOrganizationId())
-                            .orElseThrow(() -> new RuntimeException("Organización no encontrada"))
-            );
+            user.setOrganization(targetOrg);
         }
 
         if (dto.getObservations() != null) {
+            if (targetOrg != null
+                    && !targetOrg.isProPlan()
+                    && !dto.getObservations().isBlank()) {
+                planAccessService.requirePro(targetOrg, "Observaciones");
+            }
             user.setObservations(dto.getObservations());
         }
 
@@ -253,6 +309,7 @@ public class UserServiceImpl implements UserService {
                 saved.isActive(),
                 saved.getObservations(),
                 saved.getOrganization() != null ? saved.getOrganization().getName() : null,
+                saved.getOrganization() != null ? saved.getOrganization().isProPlan() : false,
                 saved.getCourses() != null ? saved.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
                 saved.getOrganization() != null ? saved.getOrganization().getId() : null
         );
@@ -296,7 +353,24 @@ public class UserServiceImpl implements UserService {
     public void activateUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (user.getOrganization() != null && user.getRole() == Rol.USER) {
+            planAccessService.validateActiveStudentLimit(user.getOrganization(), true);
+        }
+        if (user.getOrganization() != null && user.getRole() == Rol.INSTRUCTOR) {
+            planAccessService.validateInstructorLimit(user.getOrganization(), true);
+        }
         user.setActive(true);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void changePassword(Long id, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new RuntimeException("La contraseña es obligatoria");
+        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
 

@@ -18,6 +18,7 @@ public class UserDTO {
     private String observations;
 
     private String organizationName; // Ej: "Irmãos Club Puerto Rico"
+    private Boolean organizationProPlan;
     private List<String> courses; // Ej: ["BJJ Kids", "BJJ Adultos"]
 
     private Long organizationId; // Para formularios (opcional)

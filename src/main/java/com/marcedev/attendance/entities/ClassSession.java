@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "classes")
@@ -42,5 +43,18 @@ public class ClassSession {
     /** Observaciones libres de la clase */
     @Column(columnDefinition = "TEXT")
     private String observations;
+
+    /** QR habilitado para esta clase (solo plan PRO) */
+    @Column(name = "qr_enabled", nullable = false)
+    @Builder.Default
+    private boolean qrEnabled = false;
+
+    /** Token QR de la clase (válido solo el día) */
+    @Column(name = "qr_token", length = 128)
+    private String qrToken;
+
+    /** Expiración del QR */
+    @Column(name = "qr_expires_at")
+    private LocalDateTime qrExpiresAt;
 
 }

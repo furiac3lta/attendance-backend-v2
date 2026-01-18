@@ -46,6 +46,7 @@ public class OrganizationController {
                             .address(org.getAddress())
                             .logoUrl(org.getLogoUrl())
                             .active(org.isActive())
+                            .proPlan(org.isProPlan())
                             .adminFullName(org.getAdmin() != null ? org.getAdmin().getFullName() : null) // ✅ AQUI
                             .build())
                     .toList();
@@ -71,6 +72,7 @@ public class OrganizationController {
                     .address(org.getAddress())
                     .logoUrl(org.getLogoUrl())
                     .active(org.isActive())
+                    .proPlan(org.isProPlan())
                     .adminFullName(org.getAdmin() != null ? org.getAdmin().getFullName() : null) // ✅ AQUI
                     .build();
 
@@ -183,6 +185,7 @@ public class OrganizationController {
         org.setPhone(dto.getPhone());
         org.setAddress(dto.getAddress());
         org.setLogoUrl(dto.getLogoUrl());
+        org.setProPlan(dto.isProPlan());
 
         organizationRepository.save(org);
 

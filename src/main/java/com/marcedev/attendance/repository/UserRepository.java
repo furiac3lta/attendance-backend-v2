@@ -57,6 +57,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     """)
     long countActiveStudentsByOrganization(@Param("orgId") Long orgId);
 
+    @Query("""
+        SELECT COUNT(u)
+        FROM User u
+        WHERE u.organization.id = :orgId
+          AND u.active = true
+          AND u.role = com.marcedev.attendance.enums.Rol.INSTRUCTOR
+    """)
+    long countActiveInstructorsByOrganization(@Param("orgId") Long orgId);
+
     // ======================================================
     // ✔ FILTRO AVANZADO (PAGINADO) — ENUM limpio
     // ======================================================

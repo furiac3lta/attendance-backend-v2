@@ -110,7 +110,8 @@ public class ClassServiceImpl implements ClassService {
                 classSession.getDate(),
                 courseName,
                 course.getId(),
-                classSession.getObservations()
+                classSession.getObservations(),
+                classSession.isQrEnabled()
         );
 
 

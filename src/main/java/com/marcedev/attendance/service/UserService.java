@@ -40,4 +40,6 @@ public interface UserService {
     void deactivateUser(Long id);
 
     void activateUser(Long id);
+
+    void changePassword(Long id, String newPassword);
 }

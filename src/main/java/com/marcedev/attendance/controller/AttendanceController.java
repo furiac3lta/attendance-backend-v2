@@ -2,6 +2,7 @@ package com.marcedev.attendance.controller;
 
 import com.marcedev.attendance.dto.AttendanceDTO;
 import com.marcedev.attendance.dto.AttendanceMarkDTO;
+import com.marcedev.attendance.dto.QrScanRequestDTO;
 import com.marcedev.attendance.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -96,6 +97,18 @@ public class AttendanceController {
             @RequestBody List<AttendanceMarkDTO> attendances
     ) {
         attendanceService.registerAttendance(sessionId, attendances);
+        return ResponseEntity.ok().build();
+    }
+
+    // =====================================================
+    // ✅ REGISTRO VIA QR
+    // =====================================================
+    @PostMapping("/class/{classId}/qr")
+    public ResponseEntity<?> registerAttendanceViaQr(
+            @PathVariable Long classId,
+            @RequestBody QrScanRequestDTO body
+    ) {
+        attendanceService.registerAttendanceViaQr(classId, body.getToken());
         return ResponseEntity.ok().build();
     }
 
