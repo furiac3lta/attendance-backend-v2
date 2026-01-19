@@ -375,6 +375,23 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void changeOwnPassword(Long id, String currentPassword, String newPassword) {
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new RuntimeException("La contraseña actual es obligatoria");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new RuntimeException("La nueva contraseña es obligatoria");
+        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("La contraseña actual no es válida");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Override
     @Transactional
     public UserImportResultDTO importUsersFromFile(MultipartFile file) {
         UserImportResultDTO result = UserImportResultDTO.builder().build();

@@ -236,6 +236,20 @@ public class UserController {
     }
 
     // ==========================================================
+    // 🔒 CAMBIO DE CONTRASEÑA PROPIA
+    // ==========================================================
+    @PutMapping("/me/password")
+    public ResponseEntity<?> updateOwnPassword(@RequestBody PasswordUpdateDTO dto) {
+        User currentUser = userService.getAuthenticatedUser();
+        userService.changeOwnPassword(
+                currentUser.getId(),
+                dto.getCurrentPassword(),
+                dto.getNewPassword()
+        );
+        return ResponseEntity.ok("✅ Contraseña actualizada.");
+    }
+
+    // ==========================================================
     // ✅ ACTIVAR / DESACTIVAR USUARIO
     // ==========================================================
     @PutMapping("/{id}/deactivate")

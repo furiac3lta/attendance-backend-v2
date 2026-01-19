@@ -97,6 +97,8 @@ public class SecurityConfig {
                         // ---------- USUARIOS ----------
                         .requestMatchers(HttpMethod.GET, "/api/users/*/history")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR", "USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me/password")
+                        .hasAnyRole("SUPER_ADMIN", "ADMIN", "INSTRUCTOR", "USER")
                         .requestMatchers("/api/users/**")
                         .hasAnyRole("SUPER_ADMIN", "ADMIN")
 

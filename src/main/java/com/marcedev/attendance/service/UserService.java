@@ -42,4 +42,6 @@ public interface UserService {
     void activateUser(Long id);
 
     void changePassword(Long id, String newPassword);
+
+    void changeOwnPassword(Long id, String currentPassword, String newPassword);
 }
