@@ -16,6 +16,8 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
 
     List<ClassSession> findByCourseIdAndActiveTrue(Long courseId);
 
+    List<ClassSession> findByCourseIdAndActiveFalse(Long courseId);
+
     // ✅ Obtener alumnos inscritos a la clase (por curso asociado)
     @Query(value = """
         SELECT u.id, u.full_name

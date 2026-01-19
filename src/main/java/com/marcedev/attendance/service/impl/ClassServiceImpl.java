@@ -133,6 +133,11 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    public List<ClassSession> findByCourseIdInactive(Long courseId) {
+        return classSessionRepository.findByCourseIdAndActiveFalse(courseId);
+    }
+
+    @Override
     public void deactivateClass(Long id) {
         ClassSession session = classSessionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
@@ -140,6 +145,14 @@ public class ClassServiceImpl implements ClassService {
         session.setQrEnabled(false);
         session.setQrToken(null);
         session.setQrExpiresAt(null);
+        classSessionRepository.save(session);
+    }
+
+    @Override
+    public void activateClass(Long id) {
+        ClassSession session = classSessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
+        session.setActive(true);
         classSessionRepository.save(session);
     }
     // ================== AUTH ==================

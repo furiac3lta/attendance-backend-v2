@@ -50,8 +50,16 @@ public class ClassController {
 
     // ✅ Obtener clases por curso
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<?> getClassesByCourse(@PathVariable Long courseId) {
-        return ResponseEntity.ok(classService.findByCourseId(courseId));
+    public ResponseEntity<?> getClassesByCourse(
+            @PathVariable Long courseId,
+            @RequestParam(required = false) Boolean active
+    ) {
+        boolean activeFilter = active != null ? active : true;
+        return ResponseEntity.ok(
+                activeFilter
+                        ? classService.findByCourseId(courseId)
+                        : classService.findByCourseIdInactive(courseId)
+        );
     }
 
     @GetMapping("/{id}/details")
@@ -187,6 +195,18 @@ public class ClassController {
 
         classService.deactivateClass(id);
         return ResponseEntity.ok("✅ Clase desactivada.");
+    }
+
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<?> activate(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
+
+        if (currentUser.getRole() != Rol.SUPER_ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Solo SUPER_ADMIN puede activar clases.");
+        }
+
+        classService.activateClass(id);
+        return ResponseEntity.ok("✅ Clase activada.");
     }
 
     @PostMapping("/create-or-get")

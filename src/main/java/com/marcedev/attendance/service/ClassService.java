@@ -22,11 +22,16 @@ public interface ClassService {
 
     List<ClassSession> findByOrganization(Long organizationId);
 
+    List<ClassSession> findByCourseIdInactive(Long courseId);
+
     Optional<ClassSession> findByCourseIdAndDate(Long courseId, LocalDate date);
 
     ClassSession getOrCreateTodaySession(Long courseId);
 
     void deactivateClass(Long id);
 
+    void activateClass(Long id);
+
 }
+
 
