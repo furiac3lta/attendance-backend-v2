@@ -10,6 +10,7 @@ public interface AttendanceMapper {
     // Entity → DTO
     @Mapping(source = "classSession.id", target = "classSessionId")
     @Mapping(source = "classSession.name", target = "className")
+    @Mapping(source = "classSession.observations", target = "classObservations")
     @Mapping(source = "student.id", target = "studentId")
     @Mapping(source = "student.fullName", target = "studentName")
     @Mapping(source = "course.id", target = "courseId")

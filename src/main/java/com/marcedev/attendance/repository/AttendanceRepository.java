@@ -34,6 +34,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     List<Attendance> findByStudentIdOrderByTakenAtDesc(Long studentId);
 
+    @Query("SELECT a FROM Attendance a WHERE a.student.id = :studentId AND a.classSession.active = true ORDER BY a.takenAt DESC")
+    List<Attendance> findActiveByStudentIdOrderByTakenAtDesc(@Param("studentId") Long studentId);
+
     /**
      * 🔹 Buscar asistencias por ID de organización (para los ADMIN)
      * Esta query evita tener que traer todos los registros a memoria.

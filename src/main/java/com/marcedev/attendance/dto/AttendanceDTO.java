@@ -15,6 +15,7 @@ public class AttendanceDTO {
     // Clase
     private Long classSessionId;
     private String className;
+    private String classObservations;
 
     // Alumno
     private Long studentId;

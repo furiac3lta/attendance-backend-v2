@@ -172,7 +172,7 @@ public class UserController {
                 ))
                 .toList();
 
-        var attendances = attendanceRepository.findByStudentIdOrderByTakenAtDesc(id).stream()
+        var attendances = attendanceRepository.findActiveByStudentIdOrderByTakenAtDesc(id).stream()
                 .map(attendanceMapper::toDTO)
                 .toList();
 
