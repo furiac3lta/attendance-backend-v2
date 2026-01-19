@@ -53,12 +53,12 @@ public class ClassServiceImpl implements ClassService {
 
     @Override
     public List<ClassSession> findByCourseId(Long courseId) {
-        return classSessionRepository.findByCourseId(courseId);
+        return classSessionRepository.findByCourseIdAndActiveTrue(courseId);
     }
 
     @Override
     public Optional<ClassSession> findByCourseIdAndDate(Long courseId, LocalDate date) {
-        return classSessionRepository.findByCourseIdAndDate(courseId, date);
+        return classSessionRepository.findByCourseIdAndDateAndActiveTrue(courseId, date);
     }
 
     @Override
@@ -69,7 +69,7 @@ public class ClassServiceImpl implements ClassService {
         Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado."));
 
-        return classSessionRepository.findByCourseIdAndDate(courseId, today)
+        return classSessionRepository.findByCourseIdAndDateAndActiveTrue(courseId, today)
                 .orElseGet(() -> {
 
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -126,9 +126,21 @@ public class ClassServiceImpl implements ClassService {
     @Override
     public List<ClassSession> findByOrganization(Long organizationId) {
         return classSessionRepository.findAll().stream()
-                .filter(c -> c.getOrganization() != null
+                .filter(c -> c.isActive()
+                        && c.getOrganization() != null
                         && c.getOrganization().getId().equals(organizationId))
                 .toList();
+    }
+
+    @Override
+    public void deactivateClass(Long id) {
+        ClassSession session = classSessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
+        session.setActive(false);
+        session.setQrEnabled(false);
+        session.setQrToken(null);
+        session.setQrExpiresAt(null);
+        classSessionRepository.save(session);
     }
     // ================== AUTH ==================
     private User getAuthenticatedUser() {

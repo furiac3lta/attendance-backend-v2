@@ -26,5 +26,7 @@ public interface ClassService {
 
     ClassSession getOrCreateTodaySession(Long courseId);
 
+    void deactivateClass(Long id);
 
 }
+

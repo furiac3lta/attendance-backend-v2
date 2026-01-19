@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -38,6 +39,8 @@ public class ClassController {
     private final CourseRepository courseRepository;
     private final ClassSessionRepository classSessionRepository;
     private final QrCodeService qrCodeService;
+
+    private static final ZoneId APP_ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
     // ✅ Obtener o crear la clase del día (para tomar asistencia)
     @GetMapping("/today/{courseId}")
@@ -174,6 +177,18 @@ public class ClassController {
         return Arrays.asList(allowed).contains(user.getRole());
     }
 
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
+
+        if (currentUser.getRole() != Rol.SUPER_ADMIN) {
+            return ResponseEntity.status(403).body("🚫 Solo SUPER_ADMIN puede desactivar clases.");
+        }
+
+        classService.deactivateClass(id);
+        return ResponseEntity.ok("✅ Clase desactivada.");
+    }
+
     @PostMapping("/create-or-get")
     public ResponseEntity<?> createOrGetSession(@RequestBody Map<String, Long> body) {
         Long courseId = body.get("courseId");
@@ -193,12 +208,16 @@ public class ClassController {
         ClassSession session = classSessionRepository.findById(classId)
                 .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
 
+        if (!session.isActive()) {
+            return ResponseEntity.status(400).body("⚠️ La clase está desactivada.");
+        }
+
         if (session.getCourse() == null || session.getCourse().getOrganization() == null
                 || !session.getCourse().getOrganization().isProPlan()) {
             return ResponseEntity.status(403).body("🚫 Funcionalidad disponible solo en plan PRO.");
         }
 
-        if (!LocalDate.now().equals(session.getDate())) {
+        if (!LocalDate.now(APP_ZONE).equals(session.getDate())) {
             return ResponseEntity.status(400).body("⚠️ El QR solo puede generarse el día de la clase.");
         }
 
@@ -210,7 +229,7 @@ public class ClassController {
         }
 
         String token = UUID.randomUUID().toString().replace("-", "");
-        LocalDateTime expiresAt = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime expiresAt = LocalDate.now(APP_ZONE).atTime(LocalTime.MAX);
         String payload = "ATTENDANCE:CLASS:" + session.getId() + ":TOKEN:" + token;
 
         session.setQrEnabled(true);

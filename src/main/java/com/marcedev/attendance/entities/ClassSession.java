@@ -40,6 +40,11 @@ public class ClassSession {
     @JoinColumn(name = "organization_id")
     private Organization organization;
 
+    /** Estado de la clase (soft delete) */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
     /** Observaciones libres de la clase */
     @Column(columnDefinition = "TEXT")
     private String observations;

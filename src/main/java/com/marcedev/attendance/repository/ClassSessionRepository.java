@@ -14,6 +14,8 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
     // ✅ Obtener las clases de un curso
     List<ClassSession> findByCourseId(Long courseId);
 
+    List<ClassSession> findByCourseIdAndActiveTrue(Long courseId);
+
     // ✅ Obtener alumnos inscritos a la clase (por curso asociado)
     @Query(value = """
         SELECT u.id, u.full_name
@@ -28,6 +30,8 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
     @Query("SELECT c FROM ClassSession c WHERE c.course.id = :courseId AND c.date = :date")
     Optional<ClassSession> findByCourseIdAndDate(Long courseId, LocalDate date);
 
-    
+    @Query("SELECT c FROM ClassSession c WHERE c.course.id = :courseId AND c.date = :date AND c.active = true")
+    Optional<ClassSession> findByCourseIdAndDateAndActiveTrue(Long courseId, LocalDate date);
+
 
 }

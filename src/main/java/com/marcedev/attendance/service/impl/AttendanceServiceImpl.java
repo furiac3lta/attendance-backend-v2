@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,6 +32,8 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final CourseRepository courseRepository;
     private final PaymentService paymentService;
     private final PlanAccessService planAccessService;
+
+    private static final ZoneId APP_ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
     // =========================================================
     // 🔐 AUTH
@@ -72,6 +75,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         ClassSession session = classSessionRepository.findById(dto.getClassSessionId())
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
+        if (!session.isActive()) {
+            throw new RuntimeException("La clase está desactivada");
+        }
+
         User student = userRepository.findByIdAndActiveTrue(dto.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Alumno no encontrado"));
 
@@ -87,7 +94,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         entity.setAttended(dto.isAttended());
         entity.setHasDebt(!upToDate);
         entity.setTakenBy(currentUser);
-        entity.setTakenAt(LocalDateTime.now());
+        entity.setTakenAt(LocalDateTime.now(APP_ZONE));
 
         return attendanceMapper.toDTO(attendanceRepository.save(entity));
     }
@@ -119,6 +126,11 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public List<AttendanceDTO> findByClassId(Long classId) {
+        ClassSession session = classSessionRepository.findById(classId)
+                .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
+        if (!session.isActive()) {
+            return List.of();
+        }
         return attendanceRepository.findByClassSessionId(classId)
                 .stream()
                 .map(attendanceMapper::toDTO)
@@ -174,6 +186,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         ClassSession session = classSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
+        if (!session.isActive()) {
+            throw new RuntimeException("La clase está desactivada");
+        }
+
         if (session.isQrEnabled()) {
             throw new RuntimeException("La asistencia manual está deshabilitada para esta clase.");
         }
@@ -202,7 +218,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             attendance.setAttended(mark.isPresent());
             attendance.setHasDebt(!upToDate);
             attendance.setTakenBy(currentUser);
-            attendance.setTakenAt(LocalDateTime.now());
+            attendance.setTakenAt(LocalDateTime.now(APP_ZONE));
             attendance.setViaQr(false);
 
             attendanceRepository.save(attendance);
@@ -228,6 +244,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         ClassSession session = classSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
+        if (!session.isActive()) {
+            throw new RuntimeException("La clase está desactivada");
+        }
+
         if (!session.isQrEnabled()) {
             throw new RuntimeException("QR no habilitado para esta clase");
         }
@@ -241,11 +261,11 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new RuntimeException("QR inválido");
         }
 
-        if (session.getQrExpiresAt() == null || session.getQrExpiresAt().isBefore(LocalDateTime.now())) {
+        if (session.getQrExpiresAt() == null || session.getQrExpiresAt().isBefore(LocalDateTime.now(APP_ZONE))) {
             throw new RuntimeException("QR expirado");
         }
 
-        if (!session.getDate().equals(LocalDate.now())) {
+        if (!session.getDate().equals(LocalDate.now(APP_ZONE))) {
             throw new RuntimeException("QR inválido para esta fecha");
         }
 
@@ -271,6 +291,10 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         boolean upToDate = paymentService.isStudentUpToDate(student.getId(), course.getId());
 
+        User takenBy = session.getInstructor() != null
+                ? session.getInstructor()
+                : (course.getInstructor() != null ? course.getInstructor() : student);
+
         Attendance attendance = Attendance.builder()
                 .classSession(session)
                 .student(student)
@@ -278,8 +302,8 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .organization(session.getOrganization())
                 .attended(true)
                 .hasDebt(!upToDate)
-                .takenBy(student)
-                .takenAt(LocalDateTime.now())
+                .takenBy(takenBy)
+                .takenAt(LocalDateTime.now(APP_ZONE))
                 .viaQr(true)
                 .build();
 
@@ -299,9 +323,9 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new RuntimeException("No autorizado");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
 
-        return classSessionRepository.findByCourseIdAndDate(courseId, today)
+        return classSessionRepository.findByCourseIdAndDateAndActiveTrue(courseId, today)
                 .orElseGet(() -> {
 
                     Course course = courseRepository.findByIdAndActiveTrue(courseId)

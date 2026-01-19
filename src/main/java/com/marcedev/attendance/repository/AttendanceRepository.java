@@ -22,9 +22,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByClassSessionId(Long classId);
 
     /** 🔹 Buscar asistencias por ID de curso */
-    List<Attendance> findByCourseId(Long courseId);
+    @Query("SELECT a FROM Attendance a WHERE a.course.id = :courseId AND a.classSession.active = true")
+    List<Attendance> findByCourseId(@Param("courseId") Long courseId);
 
-    @Query("SELECT a FROM Attendance a WHERE a.course.id = :courseId AND a.classSession.date >= :since")
+    @Query("SELECT a FROM Attendance a WHERE a.course.id = :courseId AND a.classSession.date >= :since AND a.classSession.active = true")
     List<Attendance> findByCourseIdSince(@Param("courseId") Long courseId,
                                          @Param("since") java.time.LocalDate since);
 
@@ -37,7 +38,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
      * 🔹 Buscar asistencias por ID de organización (para los ADMIN)
      * Esta query evita tener que traer todos los registros a memoria.
      */
-    @Query("SELECT a FROM Attendance a WHERE a.organization.id = :orgId")
+    @Query("SELECT a FROM Attendance a WHERE a.organization.id = :orgId AND a.classSession.active = true")
     List<Attendance> findByOrganizationId(@Param("orgId") Long orgId);
     void deleteByClassSessionId(Long classSessionId);
 
@@ -54,6 +55,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     WHERE a.course.id = :courseId
       AND MONTH(a.classSession.date) = :month
       AND YEAR(a.classSession.date) = :year
+      AND a.classSession.active = true
     GROUP BY a.student.id, a.student.fullName
     ORDER BY a.student.fullName ASC
 """)
@@ -69,20 +71,23 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
          FROM ClassSession cs
          WHERE cs.course.id = :courseId
          AND MONTH(cs.date) = :month
-         AND YEAR(cs.date) = :year),
+         AND YEAR(cs.date) = :year
+         AND cs.active = true),
         CASE 
             WHEN (SELECT COUNT(DISTINCT cs.id)
                   FROM ClassSession cs
                   WHERE cs.course.id = :courseId
                   AND MONTH(cs.date) = :month
-                  AND YEAR(cs.date) = :year) = 0 
+                  AND YEAR(cs.date) = :year
+                  AND cs.active = true) = 0 
             THEN 0.0
             ELSE (COALESCE(SUM(CASE WHEN a.attended = true THEN 1 ELSE 0 END), 0) * 100.0 /
                   (SELECT COUNT(DISTINCT cs.id)
                    FROM ClassSession cs
                    WHERE cs.course.id = :courseId
                    AND MONTH(cs.date) = :month
-                   AND YEAR(cs.date) = :year))
+                   AND YEAR(cs.date) = :year
+                   AND cs.active = true))
         END
     )
     FROM User s
@@ -91,6 +96,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
         AND a.course.id = :courseId
         AND MONTH(a.classSession.date) = :month
         AND YEAR(a.classSession.date) = :year
+        AND a.classSession.active = true
     WHERE c.id = :courseId
       AND s.active = true
     GROUP BY s.id, s.fullName
@@ -107,7 +113,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     @Query("SELECT COUNT(DISTINCT a.classSession.id) FROM Attendance a " +
             "WHERE a.course.id = :courseId " +
             "AND MONTH(a.classSession.date) = :month " +
-            "AND YEAR(a.classSession.date) = :year")
+            "AND YEAR(a.classSession.date) = :year " +
+            "AND a.classSession.active = true")
     long countClassesInMonth(Long courseId, int month, int year);
 
     @Query("SELECT COUNT(a) FROM Attendance a " +
@@ -115,7 +122,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
             "AND a.course.id = :courseId " +
             "AND a.attended = true " +
             "AND MONTH(a.classSession.date) = :month " +
-            "AND YEAR(a.classSession.date) = :year")
+            "AND YEAR(a.classSession.date) = :year " +
+            "AND a.classSession.active = true")
     long countAttendances(Long studentId, Long courseId, int month, int year);
 
     Optional<Attendance> findByStudentIdAndClassSessionId(Long studentId, Long classSessionId);
@@ -126,6 +134,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     where a.organization.id = :orgId
       and a.hasDebt = false
       and a.student.active = true
+      and a.classSession.active = true
 """)
     long countStudentsUpToDate(Long orgId);
 
@@ -135,6 +144,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     where a.organization.id = :orgId
       and a.hasDebt = true
       and a.student.active = true
+      and a.classSession.active = true
 """)
     long countStudentsWithDebt(Long orgId);
 
@@ -144,6 +154,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
         WHERE a.student.organization.id = :orgId
           AND a.hasDebt = true
           AND a.student.active = true
+      AND a.classSession.active = true
     """)
     long countStudentsWithDebtByOrganization(@Param("orgId") Long orgId);
 
@@ -152,6 +163,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
         FROM Attendance a
         WHERE a.student.organization.id = :orgId
           AND a.student.active = true
+          AND a.classSession.active = true
     """)
     long countDistinctStudentsByOrganization(@Param("orgId") Long orgId);
 }
