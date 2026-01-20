@@ -192,13 +192,13 @@ public class UserController {
 
         var courses = courseMap.values().stream().toList();
 
-        var attendances = isProPlan
+        List<AttendanceDTO> attendances = isProPlan
                 ? attendanceRepository.findActiveByStudentIdOrderByTakenAtDesc(id).stream()
                     .map(attendanceMapper::toDTO)
                     .toList()
                 : List.of();
 
-        var payments = isProPlan ? paymentService.listByStudent(id) : List.of();
+        List<PaymentDTO> payments = isProPlan ? paymentService.listByStudent(id) : List.of();
 
         StudentHistoryDTO history = new StudentHistoryDTO(
                 target.getId(),
