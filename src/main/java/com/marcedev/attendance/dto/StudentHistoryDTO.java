@@ -13,6 +13,10 @@ public class StudentHistoryDTO {
     private Long userId;
     private String fullName;
     private String email;
+    private String role;
+    private String dni;
+    private String phone;
+    private String address;
     private String observations;
     private String organizationName;
     private List<CourseSummaryDTO> courses;

@@ -90,6 +90,9 @@ public class UserController {
                 (u.getOrganization() != null && !u.getOrganization().isProPlan())
                         ? null
                         : u.getObservations(),
+                u.getDni(),
+                u.getPhone(),
+                u.getAddress(),
                 u.getOrganization() != null ? u.getOrganization().getName() : null,
                 u.getOrganization() != null ? u.getOrganization().isProPlan() : false,
                 u.getCourses() != null ? u.getCourses().stream().map(c -> c.getName()).toList() : List.of(),
@@ -116,6 +119,9 @@ public class UserController {
         }
         user.setPassword(dto.getPassword());
         user.setObservations(dto.getObservations());
+        user.setDni(dto.getDni());
+        user.setPhone(dto.getPhone());
+        user.setAddress(dto.getAddress());
 
         if (currentRole == Rol.SUPER_ADMIN && dto.getOrganizationId() != null) {
             Organization organization = organizationRepository.findByIdAndActiveTrue(dto.getOrganizationId())
@@ -155,13 +161,7 @@ public class UserController {
             }
         }
 
-        if (target.getRole() != Rol.USER) {
-            return ResponseEntity.badRequest().body("⚠️ El historial solo aplica a alumnos.");
-        }
-
-        if (target.getOrganization() != null && !target.getOrganization().isProPlan()) {
-            return ResponseEntity.status(403).body("🚫 Funcionalidad disponible solo en plan PRO.");
-        }
+        boolean isProPlan = target.getOrganization() == null || target.getOrganization().isProPlan();
 
         var courses = enrollmentRepository.findByUserIdAndActiveTrue(id).stream()
                 .map(e -> new CourseSummaryDTO(
@@ -172,17 +172,23 @@ public class UserController {
                 ))
                 .toList();
 
-        var attendances = attendanceRepository.findActiveByStudentIdOrderByTakenAtDesc(id).stream()
-                .map(attendanceMapper::toDTO)
-                .toList();
+        var attendances = isProPlan
+                ? attendanceRepository.findActiveByStudentIdOrderByTakenAtDesc(id).stream()
+                    .map(attendanceMapper::toDTO)
+                    .toList()
+                : List.of();
 
-        var payments = paymentService.listByStudent(id);
+        var payments = isProPlan ? paymentService.listByStudent(id) : List.of();
 
         StudentHistoryDTO history = new StudentHistoryDTO(
                 target.getId(),
                 target.getFullName(),
                 target.getEmail(),
-                target.getObservations(),
+                target.getRole().name(),
+                target.getDni(),
+                target.getPhone(),
+                target.getAddress(),
+                isProPlan ? target.getObservations() : null,
                 target.getOrganization() != null ? target.getOrganization().getName() : null,
                 courses,
                 attendances,

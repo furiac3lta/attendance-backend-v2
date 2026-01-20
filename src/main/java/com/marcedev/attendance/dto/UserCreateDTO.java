@@ -10,4 +10,7 @@ public class UserCreateDTO {
     private String role;
     private Long organizationId;
     private String observations;
+    private String dni;
+    private String phone;
+    private String address;
 }

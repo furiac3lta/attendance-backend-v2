@@ -203,6 +203,18 @@ public class UserServiceImpl implements UserService {
             user.setObservations(updatedUser.getObservations());
         }
 
+        if (updatedUser.getDni() != null) {
+            user.setDni(updatedUser.getDni());
+        }
+
+        if (updatedUser.getPhone() != null) {
+            user.setPhone(updatedUser.getPhone());
+        }
+
+        if (updatedUser.getAddress() != null) {
+            user.setAddress(updatedUser.getAddress());
+        }
+
         userRepository.save(user);
     }
 
@@ -296,6 +308,17 @@ public class UserServiceImpl implements UserService {
             user.setObservations(dto.getObservations());
         }
 
+        if (dto.getDni() != null) {
+            user.setDni(dto.getDni());
+        }
+
+        if (dto.getPhone() != null) {
+            user.setPhone(dto.getPhone());
+        }
+
+        if (dto.getAddress() != null) {
+            user.setAddress(dto.getAddress());
+        }
 
         // Guardamos cambios
         User saved = userRepository.save(user);
@@ -308,6 +331,9 @@ public class UserServiceImpl implements UserService {
                 saved.getRole().name(),
                 saved.isActive(),
                 saved.getObservations(),
+                saved.getDni(),
+                saved.getPhone(),
+                saved.getAddress(),
                 saved.getOrganization() != null ? saved.getOrganization().getName() : null,
                 saved.getOrganization() != null ? saved.getOrganization().isProPlan() : false,
                 saved.getCourses() != null ? saved.getCourses().stream().map(c -> c.getName()).toList() : List.of(),

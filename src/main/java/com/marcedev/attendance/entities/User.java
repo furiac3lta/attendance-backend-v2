@@ -57,6 +57,15 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String observations;
 
+    /** DNI del usuario */
+    private String dni;
+
+    /** Teléfono del usuario */
+    private String phone;
+
+    /** Domicilio del usuario */
+    private String address;
+
     /** Cursos a los que pertenece el usuario */
     @ManyToMany(fetch = FetchType.EAGER) // ✅ Ahora Angular recibe los cursos
     @JoinTable(

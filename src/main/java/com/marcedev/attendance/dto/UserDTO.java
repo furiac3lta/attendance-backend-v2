@@ -16,6 +16,9 @@ public class UserDTO {
     private String role;
     private boolean active;
     private String observations;
+    private String dni;
+    private String phone;
+    private String address;
 
     private String organizationName; // Ej: "Irmãos Club Puerto Rico"
     private Boolean organizationProPlan;
