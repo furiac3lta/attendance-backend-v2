@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 @RestController
 @RequestMapping("/api/users")
@@ -163,14 +165,32 @@ public class UserController {
 
         boolean isProPlan = target.getOrganization() == null || target.getOrganization().isProPlan();
 
-        var courses = enrollmentRepository.findByUserIdAndActiveTrue(id).stream()
-                .map(e -> new CourseSummaryDTO(
-                        e.getCourse().getId(),
-                        e.getCourse().getName(),
-                        e.getCourse().getOrganization() != null ? e.getCourse().getOrganization().getName() : null,
-                        e.getCourse().isActive()
-                ))
-                .toList();
+        Map<Long, CourseSummaryDTO> courseMap = new LinkedHashMap<>();
+
+        if (target.getCourses() != null) {
+            target.getCourses().stream()
+                    .filter(c -> c != null && c.isActive())
+                    .forEach(c -> courseMap.put(c.getId(), new CourseSummaryDTO(
+                            c.getId(),
+                            c.getName(),
+                            c.getOrganization() != null ? c.getOrganization().getName() : null,
+                            c.isActive()
+                    )));
+        }
+
+        enrollmentRepository.findByUserIdAndActiveTrue(id).forEach(e -> {
+            var course = e.getCourse();
+            if (course != null && course.isActive()) {
+                courseMap.putIfAbsent(course.getId(), new CourseSummaryDTO(
+                        course.getId(),
+                        course.getName(),
+                        course.getOrganization() != null ? course.getOrganization().getName() : null,
+                        course.isActive()
+                ));
+            }
+        });
+
+        var courses = courseMap.values().stream().toList();
 
         var attendances = isProPlan
                 ? attendanceRepository.findActiveByStudentIdOrderByTakenAtDesc(id).stream()

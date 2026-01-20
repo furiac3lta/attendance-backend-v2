@@ -469,6 +469,9 @@ public class UserServiceImpl implements UserService {
             String roleRaw = row.getValue(ImportField.ROLE);
             String coursesRaw = row.getValue(ImportField.COURSES);
             String orgRaw = row.getValue(ImportField.ORGANIZATION);
+            String dni = row.getValue(ImportField.DNI);
+            String phone = row.getValue(ImportField.PHONE);
+            String address = row.getValue(ImportField.ADDRESS);
 
             if (fullName == null || fullName.isBlank()) {
                 result.getErrors().add(formatRowError(row.rowNumber, "Nombre vacío."));
@@ -519,6 +522,9 @@ public class UserServiceImpl implements UserService {
                     .password(generatedPassword)
                     .role(role)
                     .organization(organization)
+                    .dni(dni)
+                    .phone(phone)
+                    .address(address)
                     .build();
 
             User saved;
@@ -558,7 +564,10 @@ public class UserServiceImpl implements UserService {
         EMAIL,
         ROLE,
         COURSES,
-        ORGANIZATION
+        ORGANIZATION,
+        DNI,
+        PHONE,
+        ADDRESS
     }
 
     private static class ImportRow {
@@ -727,6 +736,25 @@ public class UserServiceImpl implements UserService {
                 || normalized.equals("organization")
                 || normalized.equals("org")) {
             return ImportField.ORGANIZATION;
+        }
+
+        if (normalized.equals("dni")) {
+            return ImportField.DNI;
+        }
+
+        if (normalized.equals("telefono")
+                || normalized.equals("tel")
+                || normalized.equals("phone")
+                || normalized.equals("celular")
+                || normalized.equals("movil")
+                || normalized.equals("mobile")) {
+            return ImportField.PHONE;
+        }
+
+        if (normalized.equals("domicilio")
+                || normalized.equals("direccion")
+                || normalized.equals("address")) {
+            return ImportField.ADDRESS;
         }
 
         return null;
