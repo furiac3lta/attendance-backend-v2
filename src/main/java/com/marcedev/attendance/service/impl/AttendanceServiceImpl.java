@@ -265,10 +265,6 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new RuntimeException("QR expirado");
         }
 
-        if (!session.getDate().equals(LocalDate.now(APP_ZONE))) {
-            throw new RuntimeException("QR inválido para esta fecha");
-        }
-
         User student = getAuthenticatedUser();
         if (student.getRole() != Rol.USER) {
             throw new RuntimeException("Solo alumnos pueden usar QR");

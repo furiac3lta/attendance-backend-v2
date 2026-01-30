@@ -237,10 +237,6 @@ public class ClassController {
             return ResponseEntity.status(403).body("🚫 Funcionalidad disponible solo en plan PRO.");
         }
 
-        if (!LocalDate.now(APP_ZONE).equals(session.getDate())) {
-            return ResponseEntity.status(400).body("⚠️ El QR solo puede generarse el día de la clase.");
-        }
-
         if (currentUser.getRole() == Rol.INSTRUCTOR) {
             if (session.getInstructor() == null
                     || !session.getInstructor().getId().equals(currentUser.getId())) {
