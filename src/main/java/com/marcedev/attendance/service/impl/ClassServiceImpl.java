@@ -15,12 +15,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ClassServiceImpl implements ClassService {
+
+    private static final ZoneId APP_ZONE = ZoneId.of("America/Argentina/Buenos_Aires");
 
     private final ClassSessionRepository classSessionRepository;
     private final CourseRepository courseRepository;
@@ -64,7 +67,7 @@ public class ClassServiceImpl implements ClassService {
     @Override
     public ClassSession getOrCreateTodaySession(Long courseId) {
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(APP_ZONE);
 
         Course course = courseRepository.findByIdAndActiveTrue(courseId)
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado."));
