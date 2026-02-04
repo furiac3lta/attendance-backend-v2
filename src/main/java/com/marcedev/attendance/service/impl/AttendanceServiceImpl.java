@@ -190,10 +190,6 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new RuntimeException("La clase está desactivada");
         }
 
-        if (session.isQrEnabled()) {
-            throw new RuntimeException("La asistencia manual está deshabilitada para esta clase.");
-        }
-
         Course course = session.getCourse();
         Organization org = session.getOrganization();
 

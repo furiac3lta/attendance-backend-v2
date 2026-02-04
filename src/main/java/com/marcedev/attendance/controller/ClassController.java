@@ -3,6 +3,7 @@ package com.marcedev.attendance.controller;
 import com.marcedev.attendance.dto.AttendanceMarkDTO;
 import com.marcedev.attendance.dto.ClassCreateDTO;
 import com.marcedev.attendance.dto.ClassDetailsDTO;
+import com.marcedev.attendance.dto.ClassUpdateDTO;
 import com.marcedev.attendance.dto.QrCodeDTO;
 import com.marcedev.attendance.entities.ClassSession;
 import com.marcedev.attendance.entities.Course;
@@ -104,6 +105,34 @@ public class ClassController {
             return ResponseEntity.internalServerError()
                     .body("❌ Error inesperado: " + e.getMessage());
         }
+    }
+
+    // ✅ Actualizar observaciones de clase
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ClassUpdateDTO dto) {
+        User currentUser = getAuthenticatedUser();
+
+        if (!hasPermission(Rol.INSTRUCTOR, Rol.ADMIN, Rol.SUPER_ADMIN)) {
+            return ResponseEntity.status(403).body("🚫 No autorizado para editar clases.");
+        }
+
+        ClassSession session = classSessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Clase no encontrada"));
+
+        if (currentUser.getRole() == Rol.INSTRUCTOR) {
+            if (session.getInstructor() == null
+                    || !session.getInstructor().getId().equals(currentUser.getId())) {
+                return ResponseEntity.status(403).body("🚫 Solo el instructor de la clase puede editarla.");
+            }
+        }
+
+        session.setObservations(dto.getObservations());
+        classSessionRepository.save(session);
+
+        return ResponseEntity.ok(Map.of(
+                "id", session.getId(),
+                "observations", session.getObservations()
+        ));
     }
 
     // ✅ Obtener una clase por ID (para tomar asistencia)
