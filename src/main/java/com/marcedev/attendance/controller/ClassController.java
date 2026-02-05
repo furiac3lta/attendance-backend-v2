@@ -109,7 +109,7 @@ public class ClassController {
 
     // ✅ Actualizar observaciones de clase
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ClassUpdateDTO dto) {
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody(required = false) ClassUpdateDTO dto) {
         User currentUser = getAuthenticatedUser();
 
         if (!hasPermission(Rol.INSTRUCTOR, Rol.ADMIN, Rol.SUPER_ADMIN)) {
@@ -126,7 +126,8 @@ public class ClassController {
             }
         }
 
-        session.setObservations(dto.getObservations());
+        String observations = dto != null ? dto.getObservations() : null;
+        session.setObservations(observations);
         classSessionRepository.save(session);
 
         return ResponseEntity.ok(Map.of(
