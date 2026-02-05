@@ -11,11 +11,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -39,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return
                 path.startsWith("/api/auth/") ||
                         path.startsWith("/actuator/") ||
+                        path.equals("/error") ||
                         path.equals("/") ||
                         "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
@@ -55,6 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 🚫 Sin header → sigue sin autenticar
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("Missing/invalid Authorization header for {} {}", request.getMethod(), request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
@@ -65,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             userEmail = jwtService.extractUsername(jwt);
         } catch (Exception e) {
-            System.err.println("❌ JWT inválido: " + e.getMessage());
+            log.warn("JWT inválido for {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
             filterChain.doFilter(request, response);
             return;
         }
@@ -91,14 +97,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                System.out.println(
-                        "✅ AUTH OK → " + userEmail + " | " + userDetails.getAuthorities()
-                );
+                log.debug("AUTH OK → {} | {}", userEmail, userDetails.getAuthorities());
             }
         }
-        System.out.println("🔐 SecurityContext: " +
-                SecurityContextHolder.getContext().getAuthentication());
-
         filterChain.doFilter(request, response);
     }
 }
